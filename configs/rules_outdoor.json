@@ -1,0 +1,84 @@
+{
+  "version": 1,
+  "scenario": "outdoor_dwr_windbreaker",
+  "must": [
+    {
+      "field": "compliance.pfas_free",
+      "op": "eq",
+      "value": true,
+      "reason": "必须 PFAS-free（合规/可持续）"
+    },
+    {
+      "field": "water_repellency",
+      "op": "gte",
+      "value": 4,
+      "reason": "拒水/防泼等级至少 4/5"
+    },
+    {
+      "field": "abrasion",
+      "op": "gte",
+      "value": 3,
+      "reason": "耐磨等级至少 3/5（户外使用强度）"
+    }
+  ],
+  "prefer": [
+    {
+      "field": "water_repellency",
+      "weight": 0.2,
+      "direction": "high",
+      "normalization": { "type": "ordinal", "levels": [1, 2, 3, 4, 5] },
+      "reason": "更强拒水/防泼"
+    },
+    {
+      "field": "breathability",
+      "weight": 0.18,
+      "direction": "high",
+      "normalization": { "type": "ordinal", "levels": [1, 2, 3, 4, 5] },
+      "reason": "更高透气/舒适"
+    },
+    {
+      "field": "abrasion",
+      "weight": 0.15,
+      "direction": "high",
+      "normalization": { "type": "ordinal", "levels": [1, 2, 3, 4, 5] },
+      "reason": "更高耐磨/更耐用"
+    },
+    {
+      "field": "handfeel_noise",
+      "weight": 0.1,
+      "direction": "high",
+      "normalization": { "type": "ordinal", "levels": [1, 2, 3, 4, 5] },
+      "reason": "更安静/更好的手感（噪音与触感综合评分，越高越好）"
+    },
+    {
+      "field": "weight_gsm",
+      "weight": 0.1,
+      "direction": "low",
+      "normalization": { "type": "minmax", "min": 60, "max": 180 },
+      "reason": "更轻量（克重越低越好）"
+    },
+    {
+      "field": "cost_level",
+      "weight": 0.15,
+      "direction": "low",
+      "normalization": { "type": "ordinal", "levels": [1, 2, 3, 4, 5] },
+      "reason": "更低成本（1=低成本，5=高成本）"
+    },
+    {
+      "field": "lead_time_level",
+      "weight": 0.12,
+      "direction": "low",
+      "normalization": { "type": "ordinal", "levels": [1, 2, 3, 4, 5] },
+      "reason": "更短交期（1=短交期，5=长交期）"
+    }
+  ],
+  "tie_breakers": [
+    { "field": "water_repellency", "direction": "high" },
+    { "field": "breathability", "direction": "high" },
+    { "field": "cost_level", "direction": "low" },
+    { "field": "lead_time_level", "direction": "low" },
+    { "field": "id", "direction": "low" }
+  ]
+}
+
+

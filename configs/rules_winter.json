@@ -1,0 +1,77 @@
+{
+  "version": 1,
+  "scenario": "winter_warm_midlayer",
+  "must": [
+    {
+      "field": "care.machine_wash",
+      "op": "eq",
+      "value": true,
+      "reason": "必须可机洗（护理约束）"
+    },
+    {
+      "field": "loft_or_clo",
+      "op": "gte",
+      "value": 1.2,
+      "reason": "保暖指标（loft/clo）至少 1.2（冬季中层需求）"
+    },
+    {
+      "field": "moisture_management",
+      "op": "gte",
+      "value": 3,
+      "reason": "排汗/快干能力至少 3/5（运动场景舒适性）"
+    }
+  ],
+  "prefer": [
+    {
+      "field": "loft_or_clo",
+      "weight": 0.3,
+      "direction": "high",
+      "normalization": { "type": "minmax", "min": 0.8, "max": 2.6 },
+      "reason": "更高保暖（loft/clo 越高越好）"
+    },
+    {
+      "field": "wind_blocking",
+      "weight": 0.15,
+      "direction": "high",
+      "normalization": { "type": "ordinal", "levels": [1, 2, 3, 4, 5] },
+      "reason": "更强抗风/保温稳定性"
+    },
+    {
+      "field": "moisture_management",
+      "weight": 0.2,
+      "direction": "high",
+      "normalization": { "type": "ordinal", "levels": [1, 2, 3, 4, 5] },
+      "reason": "更强排汗/快干"
+    },
+    {
+      "field": "bulk_weight",
+      "weight": 0.15,
+      "direction": "low",
+      "normalization": { "type": "ordinal", "levels": [1, 2, 3, 4, 5] },
+      "reason": "更轻薄（bulk/weight 越低越好；1=轻薄，5=臃肿/重）"
+    },
+    {
+      "field": "cost_level",
+      "weight": 0.12,
+      "direction": "low",
+      "normalization": { "type": "ordinal", "levels": [1, 2, 3, 4, 5] },
+      "reason": "更低成本（1=低成本，5=高成本）"
+    },
+    {
+      "field": "lead_time_level",
+      "weight": 0.08,
+      "direction": "low",
+      "normalization": { "type": "ordinal", "levels": [1, 2, 3, 4, 5] },
+      "reason": "更短交期（1=短交期，5=长交期）"
+    }
+  ],
+  "tie_breakers": [
+    { "field": "loft_or_clo", "direction": "high" },
+    { "field": "moisture_management", "direction": "high" },
+    { "field": "bulk_weight", "direction": "low" },
+    { "field": "cost_level", "direction": "low" },
+    { "field": "id", "direction": "low" }
+  ]
+}
+
+

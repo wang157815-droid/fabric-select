@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyd
+.pytest_cache/
+.mypy_cache/
+
+# Virtual env
+.venv/
+venv/
+ENV/
+
+# Local secrets
+.env
+.env.*
+!.env.example
+
+# Outputs (LLM logs/results)
+outputs/
+
+
