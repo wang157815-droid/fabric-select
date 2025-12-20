@@ -17,6 +17,7 @@ ENV/
 
 # Outputs (LLM logs/results)
 outputs/
+outputs_main/
 
 # Temp / scratch
 tmp_*.py

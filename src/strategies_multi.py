@@ -45,12 +45,24 @@ def _safe_json(text: str) -> Optional[Dict[str, Any]]:
 
 
 def _parse_agent_decision(text: str) -> Dict[str, Any]:
+    t0 = (text or "").strip()
+    if t0.startswith("[LLM_ERROR]"):
+        # 明确标记调用失败：不要默认 pick='A'，否则会污染投票/加权的统计结果
+        return {
+            "pick": None,
+            "confidence": 0.0,
+            "must_fail": True,
+            "reasons": ["llm_error"],
+            "risk_notes": [t0[:200]],
+            "llm_error": True,
+        }
+
     obj = _safe_json(text) or {}
 
     pick = str(obj.get("pick", "")).strip()
     if pick not in ("A", "B", "C", "D"):
         m = _RE_PICK.findall(text)
-        pick = m[-1] if m else "A"
+        pick = m[-1] if m else None
 
     conf = obj.get("confidence", 0.5)
     try:
@@ -68,7 +80,14 @@ def _parse_agent_decision(text: str) -> Dict[str, Any]:
     if not isinstance(risk_notes, list):
         risk_notes = [str(risk_notes)]
 
-    return {"pick": pick, "confidence": conf, "must_fail": must_fail, "reasons": [str(x) for x in reasons], "risk_notes": [str(x) for x in risk_notes]}
+    return {
+        "pick": pick,
+        "confidence": conf,
+        "must_fail": must_fail,
+        "reasons": [str(x) for x in reasons],
+        "risk_notes": [str(x) for x in risk_notes],
+        "llm_error": False,
+    }
 
 
 def _agent_system_prompt(role_desc: str) -> str:
@@ -125,22 +144,30 @@ def _call_agent(
     return decision, call_record
 
 
-def _aggregate_voting(decisions: Mapping[str, Dict[str, Any]]) -> Tuple[OptionKey, Dict[str, float]]:
+def _aggregate_voting(decisions: Mapping[str, Dict[str, Any]]) -> Tuple[Optional[OptionKey], Dict[str, float]]:
     counts: Dict[str, float] = {k: 0.0 for k in ("A", "B", "C", "D")}
     conf_sum: Dict[str, float] = {k: 0.0 for k in ("A", "B", "C", "D")}
     for d in decisions.values():
         if d.get("must_fail"):
             continue
-        pick = d["pick"]
+        pick = d.get("pick")
+        if pick not in ("A", "B", "C", "D"):
+            continue
         counts[pick] += 1.0
         conf_sum[pick] += float(d.get("confidence", 0.5))
 
     if sum(counts.values()) == 0:
         # 全部 must_fail：退化为计数（不忽略）
         for d in decisions.values():
-            pick = d["pick"]
+            pick = d.get("pick")
+            if pick not in ("A", "B", "C", "D"):
+                continue
             counts[pick] += 1.0
             conf_sum[pick] += float(d.get("confidence", 0.5))
+
+    if sum(counts.values()) == 0:
+        # 仍然没有有效 pick（例如全是 llm_error）：返回 None
+        return None, {k: 0.0 for k in ("A", "B", "C", "D")}
 
     best = max(
         counts.keys(),
@@ -155,19 +182,28 @@ def _aggregate_voting(decisions: Mapping[str, Dict[str, Any]]) -> Tuple[OptionKe
     return best, dist
 
 
-def _aggregate_weighted(decisions: Mapping[str, Dict[str, Any]], role_weights: Mapping[str, float]) -> Tuple[OptionKey, Dict[str, float]]:
+def _aggregate_weighted(decisions: Mapping[str, Dict[str, Any]], role_weights: Mapping[str, float]) -> Tuple[Optional[OptionKey], Dict[str, float]]:
     scores: Dict[str, float] = {k: 0.0 for k in ("A", "B", "C", "D")}
     for role, d in decisions.items():
         if d.get("must_fail"):
             continue
+        pick = d.get("pick")
+        if pick not in ("A", "B", "C", "D"):
+            continue
         w = float(role_weights.get(role, 1.0))
-        scores[d["pick"]] += w * float(d.get("confidence", 0.5))
+        scores[pick] += w * float(d.get("confidence", 0.5))
 
     if sum(scores.values()) == 0:
         # 若全部被 must_fail 过滤，退化为不忽略 must_fail
         for role, d in decisions.items():
+            pick = d.get("pick")
+            if pick not in ("A", "B", "C", "D"):
+                continue
             w = float(role_weights.get(role, 1.0))
-            scores[d["pick"]] += w * float(d.get("confidence", 0.5))
+            scores[pick] += w * float(d.get("confidence", 0.5))
+
+    if sum(scores.values()) == 0:
+        return None, {k: 0.0 for k in ("A", "B", "C", "D")}
 
     best = max(scores.keys(), key=lambda k: (scores[k], -ord(k)))
     total = sum(scores.values()) or 1.0
@@ -175,7 +211,7 @@ def _aggregate_weighted(decisions: Mapping[str, Dict[str, Any]], role_weights: M
     return best, dist
 
 
-def _aggregate_borda(decisions: Mapping[str, Dict[str, Any]], role_weights: Mapping[str, float]) -> Tuple[OptionKey, Dict[str, float]]:
+def _aggregate_borda(decisions: Mapping[str, Dict[str, Any]], role_weights: Mapping[str, float]) -> Tuple[Optional[OptionKey], Dict[str, float]]:
     # Borda points: 3,2,1,0
     points = {0: 3.0, 1: 2.0, 2: 1.0, 3: 0.0}
     scores: Dict[str, float] = {k: 0.0 for k in ("A", "B", "C", "D")}
@@ -193,7 +229,12 @@ def _aggregate_borda(decisions: Mapping[str, Dict[str, Any]], role_weights: Mapp
                 scores[opt] += w * points[i]
         else:
             # fallback：只给 pick 最高分
-            scores[d["pick"]] += w * points[0]
+            pick = d.get("pick")
+            if pick in ("A", "B", "C", "D"):
+                scores[pick] += w * points[0]
+
+    if sum(scores.values()) == 0:
+        return None, {k: 0.0 for k in ("A", "B", "C", "D")}
 
     best = max(scores.keys(), key=lambda k: (scores[k], -ord(k)))
     total = sum(scores.values()) or 1.0

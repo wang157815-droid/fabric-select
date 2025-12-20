@@ -6,7 +6,7 @@ import random
 import time
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Mapping, Optional
+from typing import Any, Dict, Iterable, List, Mapping, Optional, Tuple
 
 import typer
 
@@ -38,11 +38,28 @@ def _append_jsonl(path: Path, obj: Mapping[str, Any]) -> None:
 def _append_csv(path: Path, row: Mapping[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     file_exists = path.exists()
+    # 为避免“同一个 csv 文件混入不同列集合导致错位”，若已存在文件，则要求 header 与 row keys 一致。
+    if file_exists:
+        with path.open("r", newline="", encoding="utf-8") as rf:
+            reader = csv.reader(rf)
+            header = next(reader, None) or []
+        if header and set(header) != set(row.keys()):
+            raise ValueError(
+                f"CSV header mismatch for {path}. "
+                f"Existing={header}, new={list(row.keys())}. "
+                "Please use a new --results-name (recommended for main experiments)."
+            )
+        fieldnames = header if header else list(row.keys())
+    else:
+        fieldnames = list(row.keys())
+
     with path.open("a", newline="", encoding="utf-8") as f:
-        writer = csv.DictWriter(f, fieldnames=list(row.keys()))
+        writer = csv.DictWriter(f, fieldnames=list(fieldnames))
         if not file_exists:
             writer.writeheader()
-        writer.writerow(row)
+        # 补齐缺失 key，避免 DictWriter 报错
+        out_row = {k: row.get(k) for k in fieldnames}
+        writer.writerow(out_row)
 
 
 def _sum_usage(calls: List[Mapping[str, Any]]) -> Dict[str, int]:
@@ -62,6 +79,63 @@ def _sum_latency(calls: List[Mapping[str, Any]]) -> float:
 
 
 app = typer.Typer(add_completion=False, help="运行 LLM 策略评测，输出 results.csv 与 per_question_log.jsonl。")
+
+def _run_key(
+    *,
+    questions_path: Path,
+    strategy: str,
+    scenario: str,
+    temperature: float,
+    repeat_idx: int,
+    n_questions: int,
+    seed: int,
+    max_tokens: int,
+    retry_on_none: bool,
+    retry_max_tokens: int,
+    model: str,
+) -> Tuple[str, str, str, float, int, int, int, int, bool, int, str]:
+    return (
+        str(questions_path),
+        strategy,
+        scenario,
+        float(temperature),
+        int(repeat_idx),
+        int(n_questions),
+        int(seed),
+        int(max_tokens),
+        bool(retry_on_none),
+        int(retry_max_tokens),
+        str(model),
+    )
+
+
+def _load_existing_keys(results_csv: Path) -> set[Tuple[str, str, str, float, int, int, int, int, bool, int, str]]:
+    if not results_csv.exists():
+        return set()
+    keys: set[Tuple[str, str, str, float, int, int, int, int, bool, int, str]] = set()
+    with results_csv.open("r", newline="", encoding="utf-8") as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            try:
+                keys.add(
+                    _run_key(
+                        questions_path=Path(row.get("questions_path") or ""),
+                        strategy=str(row.get("strategy")),
+                        scenario=str(row.get("scenario")),
+                        temperature=float(row.get("temperature")),
+                        repeat_idx=int(row.get("repeat_idx")),
+                        n_questions=int(row.get("n_questions")),
+                        seed=int(row.get("seed")),
+                        max_tokens=int(row.get("max_tokens")),
+                        retry_on_none=str(row.get("retry_on_none")).lower() in ("1", "true", "yes"),
+                        retry_max_tokens=int(row.get("retry_max_tokens")),
+                        model=str(row.get("model")),
+                    )
+                )
+            except Exception:
+                # 兼容旧 results.csv（缺字段/类型不一致），直接跳过不计入去重
+                continue
+    return keys
 
 
 @app.command()
@@ -83,6 +157,23 @@ def main(
     progress_every: int = typer.Option(1, "--progress-every", help="每隔多少题输出一次进度"),
     questions_path: Path = typer.Option(Path("data/questions.jsonl"), help="题库路径（jsonl）"),
     out_dir: Path = typer.Option(Path("outputs"), help="输出目录（results.csv + per_question_log.jsonl）"),
+    results_name: str = typer.Option("results.csv", "--results-name", help="结果 CSV 文件名（例如 results_main.csv）"),
+    log_name: str = typer.Option("per_question_log.jsonl", "--log-name", help="逐题日志 JSONL 文件名（例如 per_question_log_main.jsonl）"),
+    skip_existing: bool = typer.Option(
+        False,
+        "--skip-existing/--no-skip-existing",
+        help="若 results 文件中已存在相同配置(questions_path/strategy/scenario/t/repeat/n/seed/max_tokens/重试参数/model)的记录，则跳过该 repeat。",
+    ),
+    log_messages: bool = typer.Option(
+        False,
+        "--log-messages/--no-log-messages",
+        help="是否在 per_question_log 中记录完整 messages（会显著增大体积；主实验建议关闭）。",
+    ),
+    abort_on_llm_error: bool = typer.Option(
+        True,
+        "--abort-on-llm-error/--no-abort-on-llm-error",
+        help="若任意一次调用返回 [LLM_ERROR]，立即中止本次 run（避免 tokens=0 的假结果污染主实验）。",
+    ),
 ) -> None:
     if strategy not in SINGLE_STRATEGIES and strategy not in MULTI_STRATEGIES:
         raise typer.BadParameter(f"Unknown strategy: {strategy}")
@@ -100,8 +191,9 @@ def main(
         typer.echo(f"[note] model={llm.model} does not support temperature={temperature}; forcing temperature=1.0")
         temperature = 1.0
 
-    results_csv = out_dir / "results.csv"
-    log_jsonl = out_dir / "per_question_log.jsonl"
+    results_csv = out_dir / results_name
+    log_jsonl = out_dir / log_name
+    existing_keys = _load_existing_keys(results_csv) if skip_existing else set()
 
     for r in range(repeats):
         rng = random.Random(seed + r)
@@ -111,6 +203,23 @@ def main(
             batch = rng.sample(q_pool, n_questions)
 
         n = len(batch)
+        if skip_existing:
+            k = _run_key(
+                questions_path=questions_path,
+                strategy=strategy,
+                scenario=scenario,
+                temperature=temperature,
+                repeat_idx=r,
+                n_questions=n,
+                seed=seed,
+                max_tokens=max_tokens,
+                retry_on_none=retry_on_none,
+                retry_max_tokens=retry_max_tokens,
+                model=str(llm.model),
+            )
+            if k in existing_keys:
+                typer.echo(f"[skip] existing result found for strategy={strategy} scenario={scenario} t={temperature} r={r} n={n} seed={seed} -> {results_csv}")
+                continue
         run_id = f"{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')}_{strategy}_{scenario}_t{temperature}_r{r}"
         t_run0 = time.perf_counter()
 
@@ -172,6 +281,18 @@ def main(
             correct += 1 if is_correct else 0
 
             calls = out.get("calls") or []
+            if not log_messages:
+                # 主实验默认不记录完整 prompt messages（体积会爆炸）；需要调试时可开 --log-messages
+                for c in calls:
+                    if isinstance(c, dict) and "messages" in c:
+                        c.pop("messages", None)
+
+            llm_err_texts = [
+                str(c.get("response_text") or "")
+                for c in calls
+                if isinstance(c, dict) and str(c.get("response_text") or "").strip().startswith("[LLM_ERROR]")
+            ]
+            llm_error = bool(llm_err_texts)
             total_calls += len(calls)
             total_latency += _sum_latency(calls)
             usage_sum = _sum_usage(calls)
@@ -181,6 +302,7 @@ def main(
                 log_jsonl,
                 {
                     "run_id": run_id,
+                    "questions_path": str(questions_path),
                     "strategy": strategy,
                     "scenario": scenario,
                     "temperature": temperature,
@@ -189,6 +311,8 @@ def main(
                     "gold": gold,
                     "pred": pred,
                     "is_correct": is_correct,
+                    "llm_error": llm_error,
+                    "llm_error_preview": (llm_err_texts[0][:240] if llm_err_texts else None),
                     "calls": calls,
                     "usage_sum": usage_sum,
                     "latency_sum_s": _sum_latency(calls),
@@ -196,9 +320,17 @@ def main(
                     "agent_decisions": out.get("agent_decisions"),
                     "aggregation": out.get("aggregation"),
                     "retry": retry_info,
+                    "max_tokens": int(max_tokens),
+                    "retry_on_none": bool(retry_on_none),
+                    "retry_max_tokens": int(retry_max_tokens),
+                    "log_messages": bool(log_messages),
                     "timestamp": datetime.now(timezone.utc).isoformat(),
                 },
             )
+
+            if llm_error and abort_on_llm_error:
+                typer.echo(f"[{run_id}] abort: LLM_ERROR detected (example): {llm_err_texts[0][:160]}")
+                raise typer.Exit(code=2)
 
             if progress and progress_every > 0:
                 done = qi + 1
@@ -216,11 +348,17 @@ def main(
         row = {
             "run_id": run_id,
             "timestamp": datetime.now(timezone.utc).isoformat(),
+            "questions_path": str(questions_path),
             "strategy": strategy,
             "scenario": scenario,
             "temperature": temperature,
             "repeat_idx": r,
             "n_questions": n,
+            "seed": int(seed),
+            "max_tokens": int(max_tokens),
+            "retry_on_none": bool(retry_on_none),
+            "retry_max_tokens": int(retry_max_tokens),
+            "log_messages": bool(log_messages),
             "correct": correct,
             "accuracy": acc,
             "model": llm.model,
