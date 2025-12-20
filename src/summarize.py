@@ -175,27 +175,35 @@ def main(
         plt.bar(sub["strategy"], sub["acc_mean"], yerr=sub["acc_std"].fillna(0.0))
         plt.xticks(rotation=30, ha="right")
         plt.ylim(0, 1)
-        plt.title(f"Accuracy by Strategy ({title})")
+        plt.title(f"Accuracy by Strategy\n({title})")
         plt.tight_layout()
         out_path = out_dir / f"acc_bar_{tag}.png"
-        plt.savefig(out_path, dpi=200)
+        plt.savefig(out_path, dpi=200, bbox_inches="tight")
         plt.close()
 
     # Scatter: tokens vs acc（按 scenario 分图）
     for bucket_vals, sub in grp.groupby(bucket_cols, dropna=False):
         tag = _bucket_tag(bucket_cols, bucket_vals)
         title = _bucket_title(bucket_cols, bucket_vals)
-        plt.figure(figsize=(6, 4))
+        plt.figure(figsize=(8, 4))
         plt.scatter(sub["tokens_mean"], sub["acc_mean"])
-        for _, row in sub.iterrows():
-            plt.text(row["tokens_mean"], row["acc_mean"], str(row["strategy"]), fontsize=8)
+        offsets = [(6, 6), (6, -6), (-6, 6), (-6, -6), (0, 8), (0, -8)]
+        for i, (_, row) in enumerate(sub.iterrows()):
+            dx, dy = offsets[i % len(offsets)]
+            plt.annotate(
+                str(row["strategy"]),
+                (row["tokens_mean"], row["acc_mean"]),
+                textcoords="offset points",
+                xytext=(dx, dy),
+                fontsize=8,
+            )
         plt.xlabel("Avg tokens / question")
         plt.ylabel("Accuracy")
         plt.ylim(0, 1)
-        plt.title(f"Accuracy vs Cost ({title})")
+        plt.title(f"Accuracy vs Cost\n({title})")
         plt.tight_layout()
         out_path = out_dir / f"acc_vs_tokens_{tag}.png"
-        plt.savefig(out_path, dpi=200)
+        plt.savefig(out_path, dpi=200, bbox_inches="tight")
         plt.close()
 
     typer.echo(f"Wrote figs -> {out_dir}")
