@@ -18,4 +18,9 @@ ENV/
 # Outputs (LLM logs/results)
 outputs/
 
+# Temp / scratch
+tmp_*.py
+tmp_*.ipynb
+
+
 

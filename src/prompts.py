@@ -69,7 +69,12 @@ def system_prompt_general() -> str:
 
 
 def user_prompt_mcq(stem: str, options: Mapping[str, Mapping[str, Any]], scenario: str) -> str:
-    return stem + "\n\n候选面料如下：\n" + format_options(options, scenario) + "\n\n请输出最终答案字母（A/B/C/D）。"
+    return (
+        stem
+        + "\n\n候选面料如下：\n"
+        + format_options(options, scenario)
+        + "\n\n请在最后一行输出：FINAL: X（X 为 A/B/C/D 之一）。"
+    )
 
 
 def few_shot_examples() -> List[Dict[str, str]]:
@@ -86,7 +91,7 @@ def few_shot_examples() -> List[Dict[str, str]]:
         "【D】water_repellency=4, breathability=4, abrasion=3, handfeel_noise=2, weight_gsm=110, cost_level=3, lead_time_level=3, PFAS-free=否\n\n"
         "最终答案字母？"
     )
-    ex_outdoor_assistant = "A"
+    ex_outdoor_assistant = "FINAL: A"
 
     ex_winter_user = (
         "任务：为“冬季保暖中层”选择材料方案。硬约束：可机洗；loft_or_clo>=1.2；排汗快干>=3/5。"
@@ -97,7 +102,7 @@ def few_shot_examples() -> List[Dict[str, str]]:
         "【D】loft_or_clo=1.6, wind_blocking=2, moisture_management=2, bulk_weight=2, machine_wash=是, cost_level=2, lead_time_level=2\n\n"
         "最终答案字母？"
     )
-    ex_winter_assistant = "B"
+    ex_winter_assistant = "FINAL: B"
 
     return [
         {"role": "user", "content": ex_outdoor_user},
@@ -113,11 +118,13 @@ def fashionprompt_template() -> str:
     """
 
     return (
-        "请按以下结构完成决策（可简写）：\n"
+        "请按以下结构完成决策（可简写，避免长篇）：\n"
+        "【必须】第一行必须是：FINAL: X（X 为 A/B/C/D 之一）\n"
+        "然后可选写三段（每段 1-3 行即可）：\n"
         "1) Must Check：逐项检查每个选项是否违反硬约束（若违反，标记 MUST-FAIL）。\n"
-        "2) Prefer Scoring：对未 MUST-FAIL 的选项，从关键软指标给出 0-5 分的主观评分，并按重要性加权。\n"
-        "3) Risk Notes：指出供应链/工艺/合规等潜在风险。\n"
-        "4) Final：输出最终答案字母（A/B/C/D），并只输出一个字母。\n"
+        "2) Prefer Scoring：对未 MUST-FAIL 的选项，用 0-5 分做简短对比（只挑 2-3 个最关键软指标）。\n"
+        "3) Risk Notes：列出 1-3 条风险点。\n"
+        "注意：不要复述题干/候选原文；总输出尽量控制在 150-250 字以内。\n"
     )
 
 

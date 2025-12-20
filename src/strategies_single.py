@@ -10,7 +10,10 @@ from .prompts import fashionprompt_template, few_shot_examples, system_prompt_ge
 OptionKey = str  # "A"/"B"/"C"/"D"
 
 
-_RE_FINAL = re.compile(r"(?:FINAL|Final|final|答案|选择|Answer)\s*[:：]?\s*([ABCD])\b")
+_RE_TAGGED = re.compile(
+    r"(?im)^\s*(?:FINAL|INITIAL|Final|Initial|final|initial|答案|选择|Answer)\s*[:：]\s*[<（(\[]?\s*([ABCD])\s*[>）)\]]?\b"
+)
+_RE_LINE_ONLY = re.compile(r"(?m)^\s*([ABCD])\s*$")
 _RE_STANDALONE = re.compile(r"\b([ABCD])\b")
 
 
@@ -29,12 +32,17 @@ def extract_pick(text: str) -> Optional[OptionKey]:
         except Exception:
             pass
 
-    # 2) 结构化关键字
-    m = _RE_FINAL.search(text)
+    # 2) Tagged line（优先 FINAL/INITIAL 等）
+    m = _RE_TAGGED.search(text)
     if m:
         return m.group(1)
 
-    # 3) 兜底：取最后一个出现的 A/B/C/D（独立词）
+    # 3) 单独一行的字母（更可靠）
+    line_m = _RE_LINE_ONLY.findall(text)
+    if line_m:
+        return line_m[-1]
+
+    # 4) 兜底：取最后一个出现的 A/B/C/D（独立词）
     all_m = _RE_STANDALONE.findall(text)
     if all_m:
         return all_m[-1]
@@ -107,7 +115,7 @@ def run_single_strategy(
 
     if strategy == "cot_few_shot":
         cot_inst = (
-            "请先用 2-4 条要点说明你的判断依据（不要输出长篇推理），最后一行只输出：FINAL: <A/B/C/D>。"
+            "请先用 2-4 条要点说明你的判断依据（不要输出长篇推理），最后一行只输出：FINAL: X（X 为 A/B/C/D）。"
         )
         messages = [{"role": "system", "content": system_prompt_general()}]
         messages.extend(few_shot_examples())
@@ -123,7 +131,7 @@ def run_single_strategy(
             {
                 "role": "user",
                 "content": user_prompt_mcq(stem, options, scenario)
-                + "\n\n请给出初步答案，并附 2-4 条简短依据。最后一行输出：INITIAL: <A/B/C/D>",
+                + "\n\n请给出初步答案，并附 2-4 条简短依据。最后一行输出：INITIAL: X（X 为 A/B/C/D）。",
             },
         ]
         calls.append(_call(llm, messages1, temperature, max_tokens, seed, call_name="self_reflection_round1"))
@@ -139,7 +147,7 @@ def run_single_strategy(
                     "你刚才的初步答案如下（可能有错）：\n"
                     f"{raw1}\n\n"
                     "请严格复核硬约束 must，并检查是否有更优的候选。"
-                    "如需修改就修改；最后一行只输出：FINAL: <A/B/C/D>。"
+                    "如需修改就修改；最后一行只输出：FINAL: X（X 为 A/B/C/D）。"
                 ),
             },
         ]
@@ -149,8 +157,12 @@ def run_single_strategy(
         return {"pick": final_pick, "calls": calls, "raw_output": raw2}
 
     if strategy == "fashionprompt":
+        sys_fp = (
+            "你是资深服装面料/材料决策助手。你会严格按硬约束 must 先淘汰，再按软偏好 prefer 综合权衡。\n"
+            "请严格遵守用户给出的结构化输出要求，尤其是第一行必须为 FINAL: X（X 为 A/B/C/D）。"
+        )
         messages = [
-            {"role": "system", "content": system_prompt_general()},
+            {"role": "system", "content": sys_fp},
             {
                 "role": "user",
                 "content": fashionprompt_template() + "\n\n" + user_prompt_mcq(stem, options, scenario),

@@ -73,6 +73,14 @@ def main(
     n_questions: int = typer.Option(50, "--n-questions", help="每次重复抽取题目数"),
     seed: int = typer.Option(123, help="抽题随机种子"),
     max_tokens: int = typer.Option(512, help="单次调用最大输出 tokens"),
+    retry_on_none: bool = typer.Option(
+        True,
+        "--retry-on-none/--no-retry-on-none",
+        help="当无法抽取 A/B/C/D（pred=None）时，自动用更高的 max_tokens 重试一次（会计入 calls/tokens/latency）。",
+    ),
+    retry_max_tokens: int = typer.Option(1024, "--retry-max-tokens", help="重试时使用的 max_tokens（仅在 pred=None 时触发）。"),
+    progress: bool = typer.Option(True, "--progress/--no-progress", help="显示逐题进度与 ETA"),
+    progress_every: int = typer.Option(1, "--progress-every", help="每隔多少题输出一次进度"),
     questions_path: Path = typer.Option(Path("data/questions.jsonl"), help="题库路径（jsonl）"),
     out_dir: Path = typer.Option(Path("outputs"), help="输出目录（results.csv + per_question_log.jsonl）"),
 ) -> None:
@@ -86,6 +94,12 @@ def main(
 
     llm = OpenAIClient()
 
+    # gpt-5 系列（含 gpt-5-mini）在当前 API 行为下通常不支持自定义 temperature；
+    # 为避免“日志记录的 temperature 与实际调用不一致”，这里对 gpt-5* 强制 temperature=1.0。
+    if str(getattr(llm, "model", "")).startswith("gpt-5") and float(temperature) != 1.0:
+        typer.echo(f"[note] model={llm.model} does not support temperature={temperature}; forcing temperature=1.0")
+        temperature = 1.0
+
     results_csv = out_dir / "results.csv"
     log_jsonl = out_dir / "per_question_log.jsonl"
 
@@ -96,8 +110,12 @@ def main(
         else:
             batch = rng.sample(q_pool, n_questions)
 
+        n = len(batch)
         run_id = f"{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')}_{strategy}_{scenario}_t{temperature}_r{r}"
         t_run0 = time.perf_counter()
+
+        if progress:
+            typer.echo(f"[{run_id}] start: strategy={strategy} scenario={scenario} n_questions={n} repeat={r+1}/{repeats}")
 
         correct = 0
         total_calls = 0
@@ -117,6 +135,39 @@ def main(
                 out = run_multi_strategy(llm, q, strategy=strategy, temperature=temperature, max_tokens=max_tokens, seed=call_seed)
 
             pred = out.get("pick")
+            retry_info: Optional[Dict[str, Any]] = None
+            # 仅对“单智能体”做重试：多智能体内部有 JSON fallback，pick 通常不会是 None
+            if (
+                strategy in SINGLE_STRATEGIES
+                and retry_on_none
+                and pred is None
+                and int(retry_max_tokens) > int(max_tokens)
+            ):
+                out2 = run_single_strategy(
+                    llm,
+                    q,
+                    strategy=strategy,
+                    temperature=temperature,
+                    max_tokens=int(retry_max_tokens),
+                    seed=call_seed,
+                )
+                pred2 = out2.get("pick")
+                retry_info = {
+                    "attempts": 2,
+                    "first_max_tokens": int(max_tokens),
+                    "retry_max_tokens": int(retry_max_tokens),
+                    "first_pick": pred,
+                    "retry_pick": pred2,
+                }
+                # 合并调用记录：计入总 calls/tokens/latency
+                calls1 = out.get("calls") or []
+                calls2 = out2.get("calls") or []
+                out = {
+                    **out,
+                    "calls": [*calls1, *calls2],
+                    "raw_output": out2.get("raw_output") or out.get("raw_output"),
+                }
+                pred = pred2
             is_correct = bool(pred == gold)
             correct += 1 if is_correct else 0
 
@@ -144,12 +195,23 @@ def main(
                     "raw_output": out.get("raw_output"),
                     "agent_decisions": out.get("agent_decisions"),
                     "aggregation": out.get("aggregation"),
+                    "retry": retry_info,
                     "timestamp": datetime.now(timezone.utc).isoformat(),
                 },
             )
 
+            if progress and progress_every > 0:
+                done = qi + 1
+                if (done % progress_every == 0) or (done == n):
+                    elapsed = time.perf_counter() - t_run0
+                    avg = elapsed / max(1, done)
+                    eta = avg * max(0, n - done)
+                    acc_so_far = correct / max(1, done)
+                    typer.echo(
+                        f"[{run_id}] {done}/{n} acc_so_far={acc_so_far:.3f} calls={total_calls} tokens={total_tokens} elapsed_s={elapsed:.1f} eta_s={eta:.1f}"
+                    )
+
         t_run = time.perf_counter() - t_run0
-        n = len(batch)
         acc = correct / max(1, n)
         row = {
             "run_id": run_id,
