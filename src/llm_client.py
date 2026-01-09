@@ -1,12 +1,18 @@
 from __future__ import annotations
 
 import os
+import random
 import time
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
 
 from dotenv import load_dotenv
+
+# 网络类异常重试配置
+_RETRY_MAX_ATTEMPTS = 5
+_RETRY_BASE_DELAY_S = 2.0
+_RETRY_MAX_DELAY_S = 60.0
 
 
 @dataclass
@@ -63,12 +69,44 @@ class OpenAIClient(LLMClient):
 
         self._client = OpenAI(api_key=api_key)
 
+    def _is_transient_error(self, e: Exception) -> bool:
+        """判断是否为可重试的网络/服务端瞬态错误。"""
+        from openai import APITimeoutError, APIConnectionError, RateLimitError, InternalServerError  # type: ignore
+        if isinstance(e, (APITimeoutError, APIConnectionError, RateLimitError, InternalServerError)):
+            return True
+        s = str(e).lower()
+        return any(kw in s for kw in ("timeout", "connection", "rate limit", "internal server", "502", "503", "504"))
+
     def complete(
         self,
         messages: List[Dict[str, str]],
         temperature: float = 0.6,
         max_tokens: int = 512,
         seed: Optional[int] = None,
+    ) -> LLMCompletion:
+        # 外层重试：处理网络超时/连接错误/速率限制等瞬态异常
+        last_transient_err: Optional[Exception] = None
+        for attempt in range(_RETRY_MAX_ATTEMPTS):
+            try:
+                return self._complete_inner(messages, temperature, max_tokens, seed)
+            except Exception as e:
+                if self._is_transient_error(e):
+                    last_transient_err = e
+                    delay = min(_RETRY_BASE_DELAY_S * (2 ** attempt) + random.uniform(0, 1), _RETRY_MAX_DELAY_S)
+                    time.sleep(delay)
+                    continue
+                raise
+        # 所有重试用尽，返回 LLM_ERROR
+        latency = 0.0
+        msg = f"[LLM_ERROR] transient error after {_RETRY_MAX_ATTEMPTS} retries: {type(last_transient_err).__name__}: {last_transient_err}"
+        return LLMCompletion(text=msg, model=self.model, latency_s=latency, usage=LLMUsage(), raw=None)
+
+    def _complete_inner(
+        self,
+        messages: List[Dict[str, str]],
+        temperature: float,
+        max_tokens: int,
+        seed: Optional[int],
     ) -> LLMCompletion:
         t0 = time.perf_counter()
 

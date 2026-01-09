@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import json
+import os
 import re
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any, Dict, List, Mapping, Optional, Tuple
 
 from .llm_client import LLMClient
@@ -23,6 +25,19 @@ WEIGHTS_WINTER = {"textile": 0.35, "technical": 0.20, "product": 0.20, "sourcing
 
 _RE_PICK = re.compile(r"\b([ABCD])\b")
 _RE_RANKING = re.compile(r"ranking\s*:\s*([ABCD])\s*>\s*([ABCD])\s*>\s*([ABCD])\s*>\s*([ABCD])", re.I)
+
+# 多角色并发（可选加速）：
+# - 默认 1：保持“串行调用”的基线行为（更稳定、限流风险更低、便于复现实验）
+# - 如需加速（仅减少 wall time，不改变算法/结果理论上应一致），可设置环境变量：
+#     MULTI_ROLE_PARALLELISM=3  （常用）
+#     MULTI_ROLE_PARALLELISM=5  （全并发：更快但更容易触发限流/网络波动）
+def _multi_role_parallelism() -> int:
+    try:
+        v = int(os.getenv("MULTI_ROLE_PARALLELISM", "1"))
+    except Exception:
+        v = 1
+    # 1~8 之间
+    return max(1, min(8, v))
 
 
 def _safe_json(text: str) -> Optional[Dict[str, Any]]:
@@ -268,10 +283,55 @@ def run_multi_strategy(
     decisions: Dict[str, Dict[str, Any]] = {}
 
     def call_roles(role_names: List[str], round_name: str) -> None:
-        for rn, desc in ROLES:
-            if rn not in role_names:
+        selected = [(rn, desc) for rn, desc in ROLES if rn in set(role_names)]
+        if not selected:
+            return
+
+        par = _multi_role_parallelism()
+        if par <= 1 or len(selected) <= 1:
+            for rn, desc in selected:
+                d, call_rec = _call_agent(llm, rn, desc, question, temperature, max_tokens, seed, round_name=round_name)
+                decisions[rn] = d
+                calls.append(call_rec)
+            return
+
+        # 并发调用：先收集结果，再按 ROLES 顺序写入（保证日志稳定）
+        tmp: Dict[str, Tuple[Dict[str, Any], Dict[str, Any]]] = {}
+        with ThreadPoolExecutor(max_workers=min(par, len(selected))) as ex:
+            futs = {
+                ex.submit(_call_agent, llm, rn, desc, question, temperature, max_tokens, seed, round_name): rn
+                for rn, desc in selected
+            }
+            for fut in as_completed(list(futs.keys())):
+                rn = futs[fut]
+                try:
+                    d, call_rec = fut.result()
+                except Exception as e:
+                    # 极端情况下（线程/客户端异常），降级为一次 LLM_ERROR 记录，避免整题崩掉
+                    msg = f"[LLM_ERROR] exception in multi-role call: {type(e).__name__}: {e}"
+                    d = {
+                        "pick": None,
+                        "confidence": 0.0,
+                        "must_fail": True,
+                        "reasons": ["llm_error"],
+                        "risk_notes": [str(e)[:200]],
+                        "llm_error": True,
+                    }
+                    call_rec = {
+                        "name": f"{round_name}:{rn}",
+                        "role": rn,
+                        "messages": [],
+                        "response_text": msg,
+                        "model": "",
+                        "latency_s": 0.0,
+                        "usage": {"input_tokens": 0, "output_tokens": 0, "total_tokens": 0},
+                    }
+                tmp[rn] = (d, call_rec)
+
+        for rn, _desc in ROLES:
+            if rn not in tmp:
                 continue
-            d, call_rec = _call_agent(llm, rn, desc, question, temperature, max_tokens, seed, round_name=round_name)
+            d, call_rec = tmp[rn]
             decisions[rn] = d
             calls.append(call_rec)
 

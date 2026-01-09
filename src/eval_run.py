@@ -138,6 +138,127 @@ def _load_existing_keys(results_csv: Path) -> set[Tuple[str, str, str, float, in
     return keys
 
 
+def _load_completed_qids(
+    log_jsonl: Path,
+    strategy: str,
+    scenario: str,
+    temperature: float,
+    repeat_idx: int,
+    seed: int,
+) -> set[str]:
+    """
+    从 per_question_log.jsonl 中读取已完成的 question_id。
+    通过匹配 strategy/scenario/temperature/repeat_idx 字段来识别（兼容新旧日志格式）。
+    """
+    if not log_jsonl.exists():
+        return set()
+    done: set[str] = set()
+    with log_jsonl.open("r", encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                obj = json.loads(line)
+                # 直接匹配字段（比匹配 run_id 前缀更可靠）
+                if (
+                    str(obj.get("strategy")) == strategy
+                    and str(obj.get("scenario")) == scenario
+                    and float(obj.get("temperature", -1)) == float(temperature)
+                    and int(obj.get("repeat_idx", -1)) == int(repeat_idx)
+                ):
+                    qid = str(obj.get("question_id") or "")
+                    if qid:
+                        done.add(qid)
+            except Exception:
+                continue
+    return done
+
+
+def _summarize_from_log(
+    log_jsonl: Path,
+    *,
+    strategy: str,
+    scenario: str,
+    temperature: float,
+    repeat_idx: int,
+    target_qids: Optional[set[str]] = None,
+) -> Dict[str, Any]:
+    """
+    从 per_question_log.jsonl 中汇总某个 run（按 strategy/scenario/temperature/repeat_idx 匹配）。
+
+    - 若同一 question_id 出现多次（断点续跑/重复跑），取 timestamp 最新的一条。
+    - target_qids 不为空时，仅统计该集合内的题目。
+    """
+    if not log_jsonl.exists():
+        return {
+            "n": 0,
+            "correct": 0,
+            "total_calls": 0,
+            "total_tokens": 0,
+            "total_latency_s": 0.0,
+        }
+
+    # qid -> (timestamp, is_correct, calls, tokens, latency)
+    latest: Dict[str, Tuple[str, bool, int, int, float]] = {}
+    with log_jsonl.open("r", encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                obj = json.loads(line)
+            except Exception:
+                continue
+
+            if str(obj.get("strategy")) != strategy:
+                continue
+            if str(obj.get("scenario")) != scenario:
+                continue
+            try:
+                if float(obj.get("temperature", -1)) != float(temperature):
+                    continue
+            except Exception:
+                continue
+            try:
+                if int(obj.get("repeat_idx", -1)) != int(repeat_idx):
+                    continue
+            except Exception:
+                continue
+
+            qid = str(obj.get("question_id") or "")
+            if not qid:
+                continue
+            if target_qids is not None and qid not in target_qids:
+                continue
+
+            ts = str(obj.get("timestamp") or "")
+            is_correct = bool(obj.get("is_correct"))
+            calls = obj.get("calls") or []
+            calls_n = len(calls) if isinstance(calls, list) else 0
+            usage_sum = obj.get("usage_sum") or {}
+            total_tokens = int(usage_sum.get("total_tokens") or 0)
+            latency_s = float(obj.get("latency_sum_s") or 0.0)
+
+            prev = latest.get(qid)
+            if prev is None or ts >= prev[0]:
+                latest[qid] = (ts, is_correct, calls_n, total_tokens, latency_s)
+
+    n = len(latest)
+    correct = sum(1 for (_, ok, _, _, _) in latest.values() if ok)
+    total_calls = sum(int(calls_n) for (_, _, calls_n, _, _) in latest.values())
+    total_tokens = sum(int(toks) for (_, _, _, toks, _) in latest.values())
+    total_latency_s = float(sum(float(lat) for (_, _, _, _, lat) in latest.values()))
+
+    return {
+        "n": n,
+        "correct": correct,
+        "total_calls": total_calls,
+        "total_tokens": total_tokens,
+        "total_latency_s": total_latency_s,
+    }
+
+
 @app.command()
 def main(
     strategy: str = typer.Option(..., help=f"策略名：单智能体={sorted(SINGLE_STRATEGIES)}；多智能体={sorted(MULTI_STRATEGIES)}"),
@@ -173,6 +294,11 @@ def main(
         True,
         "--abort-on-llm-error/--no-abort-on-llm-error",
         help="若任意一次调用返回 [LLM_ERROR]，立即中止本次 run（避免 tokens=0 的假结果污染主实验）。",
+    ),
+    resume: bool = typer.Option(
+        False,
+        "--resume/--no-resume",
+        help="断点续跑：从 per_question_log 中读取已完成的 question_id 并跳过，仅重跑剩余题目。",
     ),
 ) -> None:
     if strategy not in SINGLE_STRATEGIES and strategy not in MULTI_STRATEGIES:
@@ -220,20 +346,42 @@ def main(
             if k in existing_keys:
                 typer.echo(f"[skip] existing result found for strategy={strategy} scenario={scenario} t={temperature} r={r} n={n} seed={seed} -> {results_csv}")
                 continue
-        run_id = f"{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')}_{strategy}_{scenario}_t{temperature}_r{r}"
+        run_id = f"{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')}_{strategy}_{scenario}_t{temperature}_r{r}_seed{seed}"
+        
+        # --resume：读取已完成的 question_id 并过滤
+        completed_qids: set[str] = set()
+        if resume:
+            completed_qids = _load_completed_qids(
+                log_jsonl,
+                strategy=strategy,
+                scenario=scenario,
+                temperature=temperature,
+                repeat_idx=r,
+                seed=seed,
+            )
+            if completed_qids:
+                typer.echo(f"[resume] found {len(completed_qids)} completed questions for strategy={strategy} scenario={scenario} t={temperature} r={r}")
+        
         t_run0 = time.perf_counter()
 
         if progress:
-            typer.echo(f"[{run_id}] start: strategy={strategy} scenario={scenario} n_questions={n} repeat={r+1}/{repeats}")
+            pending_count = sum(1 for q in batch if str(q.get("id")) not in completed_qids)
+            typer.echo(f"[{run_id}] start: strategy={strategy} scenario={scenario} n_questions={n} pending={pending_count} repeat={r+1}/{repeats}")
 
         correct = 0
         total_calls = 0
         total_latency = 0.0
         total_tokens = 0
 
+        processed = 0  # 实际处理的题目数（用于进度统计）
         for qi, q in enumerate(batch):
-            qid = q.get("id")
+            qid = str(q.get("id") or "")
             gold = q.get("answer")
+            
+            # --resume：跳过已完成的题目
+            if resume and qid in completed_qids:
+                continue
+            processed += 1
 
             # 给 LLM 的 seed：保证“同 repeat 内稳定”，不同题也不同
             call_seed: Optional[int] = (seed + r * 100_000 + qi) if seed is not None else None
@@ -333,18 +481,43 @@ def main(
                 raise typer.Exit(code=2)
 
             if progress and progress_every > 0:
-                done = qi + 1
-                if (done % progress_every == 0) or (done == n):
+                done = processed
+                pending_total = n - len(completed_qids) if resume else n
+                if (done % progress_every == 0) or (done == pending_total):
                     elapsed = time.perf_counter() - t_run0
                     avg = elapsed / max(1, done)
-                    eta = avg * max(0, n - done)
+                    eta = avg * max(0, pending_total - done)
                     acc_so_far = correct / max(1, done)
                     typer.echo(
-                        f"[{run_id}] {done}/{n} acc_so_far={acc_so_far:.3f} calls={total_calls} tokens={total_tokens} elapsed_s={elapsed:.1f} eta_s={eta:.1f}"
+                        f"[{run_id}] {done}/{pending_total} acc_so_far={acc_so_far:.3f} calls={total_calls} tokens={total_tokens} elapsed_s={elapsed:.1f} eta_s={eta:.1f}"
                     )
 
         t_run = time.perf_counter() - t_run0
-        acc = correct / max(1, n)
+        # results.csv 需要代表“该 repeat 的全量表现”，即使启用了 --resume 也应按全量题目汇总。
+        # 若本次 run 是断点续跑（completed_qids 非空或 processed < n），从日志中重建全量统计。
+        if resume and (completed_qids or processed < n):
+            target_qids = {str(q.get("id") or "") for q in batch if str(q.get("id") or "")}
+            summary = _summarize_from_log(
+                log_jsonl,
+                strategy=strategy,
+                scenario=scenario,
+                temperature=temperature,
+                repeat_idx=r,
+                target_qids=target_qids,
+            )
+            actual_n = int(summary["n"])
+            correct_total = int(summary["correct"])
+            total_calls_total = int(summary["total_calls"])
+            total_tokens_total = int(summary["total_tokens"])
+            total_latency_total = float(summary["total_latency_s"])
+        else:
+            actual_n = n
+            correct_total = correct
+            total_calls_total = total_calls
+            total_tokens_total = total_tokens
+            total_latency_total = total_latency
+
+        acc = correct_total / max(1, actual_n)
         row = {
             "run_id": run_id,
             "timestamp": datetime.now(timezone.utc).isoformat(),
@@ -353,27 +526,28 @@ def main(
             "scenario": scenario,
             "temperature": temperature,
             "repeat_idx": r,
-            "n_questions": n,
+            "n_questions": actual_n,
             "seed": int(seed),
             "max_tokens": int(max_tokens),
             "retry_on_none": bool(retry_on_none),
             "retry_max_tokens": int(retry_max_tokens),
             "log_messages": bool(log_messages),
-            "correct": correct,
+            "correct": int(correct_total),
             "accuracy": acc,
             "model": llm.model,
-            "total_calls": total_calls,
-            "total_tokens": total_tokens,
-            "total_latency_s": round(total_latency, 6),
-            "avg_latency_s": round(total_latency / max(1, n), 6),
-            "avg_tokens": round(total_tokens / max(1, n), 3),
-            "avg_calls": round(total_calls / max(1, n), 3),
+            "total_calls": int(total_calls_total),
+            "total_tokens": int(total_tokens_total),
+            "total_latency_s": round(float(total_latency_total), 6),
+            "avg_latency_s": round(float(total_latency_total) / max(1, actual_n), 6),
+            "avg_tokens": round(int(total_tokens_total) / max(1, actual_n), 3),
+            "avg_calls": round(int(total_calls_total) / max(1, actual_n), 3),
             "wall_time_s": round(t_run, 6),
+            "resumed": bool(resume and (len(completed_qids) > 0 or processed < n)),
         }
         _append_csv(results_csv, row)
 
         typer.echo(
-            f"[{run_id}] acc={acc:.3f} correct={correct}/{n} calls={total_calls} tokens={total_tokens} latency_s={total_latency:.2f} wall_s={t_run:.2f}"
+            f"[{run_id}] acc={acc:.3f} correct={int(correct_total)}/{actual_n} calls={int(total_calls_total)} tokens={int(total_tokens_total)} latency_s={float(total_latency_total):.2f} wall_s={t_run:.2f}"
         )
 
 

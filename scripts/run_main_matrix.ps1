@@ -2,6 +2,7 @@ param(
   [int]$Repeats = 3,
   [int]$NQuestions = 500,
   [int]$Seed = 1000,
+  [int]$MultiRoleParallelism = 1,
   [string]$QuestionsPath = "data/questions_v1_clean.jsonl",
   [string]$OutDir = "outputs",
   [string]$ResultsName = "results_main.csv",
@@ -24,9 +25,13 @@ param(
 
 $ErrorActionPreference = "Stop"
 
+# 多智能体策略并发度（voting/weighted/borda/garmentagents*）
+$env:MULTI_ROLE_PARALLELISM = "$MultiRoleParallelism"
+
 Write-Host "Running main matrix..."
 Write-Host "  questions_path=$QuestionsPath"
 Write-Host "  repeats=$Repeats n_questions=$NQuestions seed=$Seed"
+Write-Host "  multi_role_parallelism=$($env:MULTI_ROLE_PARALLELISM)"
 Write-Host "  out_dir=$OutDir results=$ResultsName log=$LogName"
 Write-Host "  scenarios=$($Scenarios -join ',')"
 Write-Host "  strategies=$($Strategies -join ',')"
@@ -53,10 +58,12 @@ foreach ($scenario in $Scenarios) {
       --results-name $ResultsName `
       --log-name $LogName `
       --skip-existing `
-      --no-log-messages
+      --no-log-messages `
+      --resume `
+      --no-abort-on-llm-error
 
     if ($LASTEXITCODE -ne 0) {
-      throw "eval_run failed: scenario=$scenario strategy=$strategy exit=$LASTEXITCODE"
+      Write-Host "[WARN] eval_run returned exit=$LASTEXITCODE for scenario=$scenario strategy=$strategy, continuing..."
     }
   }
 }

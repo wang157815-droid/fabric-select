@@ -139,15 +139,24 @@ def run_single_strategy(
         init_pick = extract_pick(raw1)
 
         # Call 2: reflect + final
+        # IMPORTANT: round2 必须携带原题与选项，否则模型会反复索要信息，导致变慢/产生 None/触发重试。
+        # 这里用“同一对话的复盘”格式：user 提供原题 -> assistant 给出初答 -> user 要求复核并只输出 FINAL。
+        question_prompt = user_prompt_mcq(stem, options, scenario)
+        init_pick_str = init_pick or "（未抽取到）"
         messages2 = [
             {"role": "system", "content": system_prompt_general()},
+            {"role": "user", "content": question_prompt},
+            {
+                "role": "assistant",
+                "content": raw1 or f"INITIAL: {init_pick_str}",
+            },
             {
                 "role": "user",
                 "content": (
-                    "你刚才的初步答案如下（可能有错）：\n"
-                    f"{raw1}\n\n"
-                    "请严格复核硬约束 must，并检查是否有更优的候选。"
-                    "如需修改就修改；最后一行只输出：FINAL: X（X 为 A/B/C/D）。"
+                    "请复核你刚才的初步答案：先严格检查题目中的硬约束 must（不满足的选项必须淘汰），"
+                    "再在剩余选项中按偏好选择最优。"
+                    "如果初步答案不对，请纠正。\n\n"
+                    "要求：不要输出解释或多余文字；只输出一行：FINAL: X（X 为 A/B/C/D）。"
                 ),
             },
         ]
