@@ -163,13 +163,72 @@
 
 ---
 
+## 消融实验结果（Ablation Study）
+
+目录：`outputs/figs_ablation/`
+
+基于 `per_question_log_main.jsonl` 中已保存的 5-role agent 输出进行**离线计算**（无需额外 API 调用）。
+
+### A1: Early Stopping 消融
+
+| 变体 | Accuracy | Avg API Calls/题 |
+|---|---:|---:|
+| **With Early Stop**（默认） | 0.387 | **3.73** |
+| No Early Stop（强制跑满 5 agents） | 0.387 | 5.00 |
+
+**结论**：Early stopping 机制在准确率上**无损失**，同时节省 **~25%** 的 API 调用成本。
+
+### B1: 聚合方式消融（5 agents 输出）
+
+| 聚合方式 | Accuracy |
+|---|---:|
+| **majority**（多数投票） | **0.417** |
+| **confidence**（纯置信度加权） | **0.417** |
+| weighted（角色权重加权） | 0.397 |
+| borda（Borda 计数） | 0.394 |
+
+**结论**：简单的 majority voting 和 confidence-weighted 效果最好，复杂的 borda 和 weighted 反而略差。
+
+### B2: Agent 数量扫描（K=1..5）
+
+| K | Accuracy (outdoor) | Accuracy (winter) |
+|---|---:|---:|
+| 1 | 0.190 | 0.209 |
+| 2 | 0.283 | 0.311 |
+| 3 | 0.354 | 0.364 |
+| 4 | 0.394 | 0.383 |
+| **5** | **0.428** | **0.406** |
+
+**结论**：Agent 数量与准确率呈**正相关**，K=5 时达到最佳。增加 agent 带来的边际收益在 K=3→4 时开始递减。
+
+### C1: 角色 Dropout 消融
+
+| Dropped Role | Accuracy | Δ vs Baseline |
+|---|---:|---:|
+| **none (baseline)** | **0.397** | — |
+| textile | 0.378 | -0.019 |
+| compliance | 0.374 | -0.023 |
+| sourcing | 0.369 | -0.028 |
+| product | 0.363 | -0.034 |
+| **technical** | 0.361 | **-0.036** |
+
+**结论**：移除任何角色都会导致准确率下降，其中 **technical** 角色贡献最大（drop 后下降 3.6pp），说明技术性能约束在面料选择中最为关键。
+
+### 消融图表
+
+- `ablation_a1_early_stop.png`：Early stop 对比
+- `ablation_b1_aggregator.png`：聚合方式对比
+- `ablation_b2_agents_sweep.png`：Agent 数量曲线
+- `ablation_c1_role_dropout.png`：角色 dropout 对比
+- `ablation_a3_threshold_sweep.png`：阈值扫描
+
+---
+
 ## 下一步（可选增强）
 
-- **消融实验（Ablation，建议优先级：高）**  
-  重点验证 `garmentagents_adaptive` 的关键设计点（例如 early-stop / 角色差异 / 去掉 compliance 角色）。
+- ✅ **消融实验（Ablation）**：已完成
 - **高阶模型复核（投稿加固，建议优先级：中）**  
   用 `gpt-5` 在 200 题子集上复核 3 个代表策略（例如 `few_shot`, `cot_few_shot`, `garmentagents_adaptive`），检查趋势一致性。
 - **论文写作清单（建议立刻启动）**  
-  方法（数据集+策略定义）→ 实验设置 → 结果（主表+主图+trade-off）→ 统计检验 → 错误分析 → 局限与未来工作。
-
+  方法（数据集+策略定义）→ 实验设置 → 结果（主表+主图+trade-off）→ 消融分析 → 统计检验 → 错误分析 → 局限与未来工作。
 
