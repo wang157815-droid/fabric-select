@@ -6,10 +6,12 @@
 支持的消融：
 - A1: No Early Stopping（强制跑满所有 agent）
 - A2: Static Routing + Early Stop（固定顺序 + 早停）
-- A3: 阈值扫描（top1 阈值 / gap 阈值）
+- A3: 阈值扫描（top1 阈值 / gap 阈值）+ Pareto 曲线
 - B1: 聚合方式消融（majority / weighted / borda / confidence-weighted）
 - B2: #Agents Sweep（K=1..5）
 - C1: Role Dropout（移除单个角色）
+- D1: Clean vs Ambiguous（按 margin 分层）
+- 解释型指标：Constraint Violation Rate（硬约束违反率）
 """
 import json
 import re
@@ -164,15 +166,90 @@ def _load_multi_agent_records(log_jsonl: Path) -> List[Dict[str, Any]]:
     return records
 
 
+def _load_all_records(log_jsonl: Path) -> List[Dict[str, Any]]:
+    """加载所有策略的日志记录"""
+    records = []
+    with log_jsonl.open("r", encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                records.append(json.loads(line))
+            except Exception:
+                continue
+    return records
+
+
+def _load_questions(questions_jsonl: Path) -> Dict[str, Dict[str, Any]]:
+    """加载题目数据"""
+    questions = {}
+    with questions_jsonl.open("r", encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                obj = json.loads(line)
+                questions[obj["id"]] = obj
+            except Exception:
+                continue
+    return questions
+
+
+def _simulate_static_routing(
+    decisions: Dict[str, Dict[str, Any]],
+    weights: Dict[str, float],
+    top1_thresh: float = 0.70,
+    gap_thresh: float = 0.25,
+) -> Tuple[Optional[OptionKey], int, int]:
+    """
+    模拟 static routing + early stop：
+    - 固定顺序调用 agent（按字母顺序而非权重）
+    - Round 1: 前 3 个 agent
+    - 若达到一致性阈值则早停
+    - 否则 Round 2: 剩余 2 个 agent
+    
+    返回：(pick, rounds, calls)
+    """
+    # 固定顺序（字母序）而非按权重
+    static_order = sorted(ROLES)
+    r1_roles = static_order[:3]
+    r2_roles = static_order[3:]
+    
+    # Round 1
+    pick1, dist1 = _aggregate_weighted(decisions, r1_roles, weights)
+    top1, gap = _top1_gap(dist1)
+    
+    if top1 >= top1_thresh or gap >= gap_thresh:
+        return pick1, 1, len(r1_roles)
+    
+    # Round 2
+    all_roles = r1_roles + r2_roles
+    pick2, dist2 = _aggregate_weighted(decisions, all_roles, weights)
+    return pick2, 2, len(all_roles)
+
+
 @app.command()
 def main(
     log_jsonl: Path = typer.Option(..., "--log", help="per_question_log_main.jsonl 路径"),
+    questions_jsonl: Path = typer.Option(Path("data/questions_v1_clean.jsonl"), "--questions", help="题目数据路径"),
     out_dir: Path = typer.Option(Path("outputs/figs_ablation"), "--out-dir", help="输出目录"),
 ) -> None:
     out_dir.mkdir(parents=True, exist_ok=True)
     
-    records = _load_multi_agent_records(log_jsonl)
-    typer.echo(f"Loaded {len(records)} multi-agent records")
+    # 加载所有记录
+    all_records = _load_all_records(log_jsonl)
+    typer.echo(f"Loaded {len(all_records)} total records")
+    
+    # 加载题目数据
+    questions = _load_questions(questions_jsonl)
+    typer.echo(f"Loaded {len(questions)} questions")
+    
+    # 筛选多智能体记录
+    multi_strategies = {"voting", "weighted_voting", "borda", "garmentagents_fixed", "garmentagents_adaptive"}
+    records = [r for r in all_records if r.get("strategy") in multi_strategies and r.get("agent_decisions")]
+    typer.echo(f"Filtered {len(records)} multi-agent records")
     
     # 按 (strategy, scenario, repeat_idx) 分组
     grouped: Dict[Tuple[str, str, int], List[Dict[str, Any]]] = defaultdict(list)
@@ -236,6 +313,58 @@ def main(
             "correct": correct,
             "accuracy": acc,
             "avg_calls": avg_calls,
+        })
+    
+    # ========== A2: Static Routing + Early Stop ==========
+    typer.echo("\n=== A2: Static Routing + Early Stop ===")
+    a2_results = []
+    for (strategy, scenario, repeat_idx), recs in grouped.items():
+        if strategy != "garmentagents_adaptive":
+            continue
+        weights = _get_role_weights(scenario)
+        
+        # Static routing (固定字母顺序)
+        correct_static = 0
+        total_calls_static = 0
+        for rec in recs:
+            decisions = rec.get("agent_decisions", {})
+            gold = rec.get("gold")
+            pick, rounds, calls = _simulate_static_routing(decisions, weights)
+            if pick == gold:
+                correct_static += 1
+            total_calls_static += calls
+        n = len(recs)
+        acc_static = correct_static / n if n > 0 else 0
+        avg_calls_static = total_calls_static / n if n > 0 else 0
+        a2_results.append({
+            "variant": "static_routing_early_stop",
+            "scenario": scenario,
+            "repeat_idx": repeat_idx,
+            "n": n,
+            "accuracy": acc_static,
+            "avg_calls": avg_calls_static,
+        })
+        typer.echo(f"  static+stop {scenario} r{repeat_idx}: acc={acc_static:.3f} avg_calls={avg_calls_static:.2f}")
+        
+        # Adaptive routing (按权重顺序) - 作为对比
+        correct_adaptive = 0
+        total_calls_adaptive = 0
+        for rec in recs:
+            decisions = rec.get("agent_decisions", {})
+            gold = rec.get("gold")
+            pick, rounds, calls = _simulate_adaptive(decisions, weights)
+            if pick == gold:
+                correct_adaptive += 1
+            total_calls_adaptive += calls
+        acc_adaptive = correct_adaptive / n if n > 0 else 0
+        avg_calls_adaptive = total_calls_adaptive / n if n > 0 else 0
+        a2_results.append({
+            "variant": "adaptive_routing_early_stop",
+            "scenario": scenario,
+            "repeat_idx": repeat_idx,
+            "n": n,
+            "accuracy": acc_adaptive,
+            "avg_calls": avg_calls_adaptive,
         })
     
     # ========== A3: 阈值扫描 ==========
@@ -379,6 +508,113 @@ def main(
             })
             typer.echo(f"  drop={drop_role} {scenario} r{repeat_idx}: acc={acc:.3f} (baseline={acc_baseline:.3f})")
     
+    # ========== D1: Clean vs Ambiguous ==========
+    typer.echo("\n=== D1: Clean vs Ambiguous (by margin) ===")
+    d1_results = []
+    
+    # 按 margin 分层：ambiguous (margin < 0.08) vs clean (margin >= 0.08)
+    margin_threshold = 0.08
+    
+    # 对所有策略进行分层分析
+    strategy_groups: Dict[Tuple[str, str, int], List[Dict[str, Any]]] = defaultdict(list)
+    for rec in all_records:
+        if rec.get("pred") in ("A", "B", "C", "D"):
+            key = (rec["strategy"], rec["scenario"], int(rec.get("repeat_idx", 0)))
+            strategy_groups[key].append(rec)
+    
+    for (strategy, scenario, repeat_idx), recs in strategy_groups.items():
+        clean_correct = 0
+        clean_total = 0
+        ambig_correct = 0
+        ambig_total = 0
+        
+        for rec in recs:
+            qid = rec.get("question_id")
+            gold = rec.get("gold")
+            pred = rec.get("pred")
+            
+            q = questions.get(qid, {})
+            # margin 字段在 meta 里，路径是 meta.margin（不是 meta.oracle_margin）
+            margin = q.get("meta", {}).get("margin", 0.1)
+            
+            if margin < margin_threshold:
+                ambig_total += 1
+                if pred == gold:
+                    ambig_correct += 1
+            else:
+                clean_total += 1
+                if pred == gold:
+                    clean_correct += 1
+        
+        if clean_total > 0:
+            d1_results.append({
+                "strategy": strategy,
+                "scenario": scenario,
+                "repeat_idx": repeat_idx,
+                "subset": "clean",
+                "n": clean_total,
+                "correct": clean_correct,
+                "accuracy": clean_correct / clean_total,
+            })
+        if ambig_total > 0:
+            d1_results.append({
+                "strategy": strategy,
+                "scenario": scenario,
+                "repeat_idx": repeat_idx,
+                "subset": "ambiguous",
+                "n": ambig_total,
+                "correct": ambig_correct,
+                "accuracy": ambig_correct / ambig_total,
+            })
+    
+    # 打印汇总
+    for strategy in sorted(set(r["strategy"] for r in d1_results)):
+        clean_accs = [r["accuracy"] for r in d1_results if r["strategy"] == strategy and r["subset"] == "clean"]
+        ambig_accs = [r["accuracy"] for r in d1_results if r["strategy"] == strategy and r["subset"] == "ambiguous"]
+        if clean_accs and ambig_accs:
+            typer.echo(f"  {strategy}: clean={sum(clean_accs)/len(clean_accs):.3f}, ambiguous={sum(ambig_accs)/len(ambig_accs):.3f}")
+    
+    # ========== Constraint Violation Rate ==========
+    typer.echo("\n=== Constraint Violation Rate ===")
+    violation_results = []
+    
+    for (strategy, scenario, repeat_idx), recs in strategy_groups.items():
+        total_answered = 0
+        must_violations = 0
+        
+        for rec in recs:
+            qid = rec.get("question_id")
+            pred = rec.get("pred")
+            
+            if pred not in ("A", "B", "C", "D"):
+                continue
+            
+            total_answered += 1
+            q = questions.get(qid, {})
+            option_tags = q.get("option_tags", {})
+            pred_tags = option_tags.get(pred, [])
+            
+            # 检查是否选择了违反 must 约束的选项
+            if "must_fail" in pred_tags:
+                must_violations += 1
+        
+        if total_answered > 0:
+            violation_rate = must_violations / total_answered
+            violation_results.append({
+                "strategy": strategy,
+                "scenario": scenario,
+                "repeat_idx": repeat_idx,
+                "n": total_answered,
+                "must_violations": must_violations,
+                "violation_rate": violation_rate,
+            })
+    
+    # 打印汇总
+    for strategy in sorted(set(r["strategy"] for r in violation_results)):
+        rates = [r["violation_rate"] for r in violation_results if r["strategy"] == strategy]
+        if rates:
+            typer.echo(f"  {strategy}: violation_rate={sum(rates)/len(rates):.3f}")
+    
     # ========== 保存结果 ==========
     import csv
     
@@ -393,10 +629,13 @@ def main(
         typer.echo(f"Wrote {path}")
     
     save_csv(a1_results, "ablation_a1_no_early_stop.csv")
+    save_csv(a2_results, "ablation_a2_static_routing.csv")
     save_csv(a3_results, "ablation_a3_threshold_sweep.csv")
     save_csv(b1_results, "ablation_b1_aggregator.csv")
     save_csv(b2_results, "ablation_b2_agents_sweep.csv")
     save_csv(c1_results, "ablation_c1_role_dropout.csv")
+    save_csv(d1_results, "ablation_d1_clean_vs_ambiguous.csv")
+    save_csv(violation_results, "ablation_constraint_violation.csv")
     
     # ========== 生成汇总报告 ==========
     report_lines = ["# Ablation Study Results (Offline)\n"]
@@ -406,6 +645,13 @@ def main(
     report_lines.append("| Variant | Scenario | Repeat | N | Accuracy | Avg Calls |")
     report_lines.append("|---------|----------|--------|---|----------|-----------|")
     for r in sorted(a1_results, key=lambda x: (x["variant"], x["scenario"], x["repeat_idx"])):
+        report_lines.append(f"| {r['variant']} | {r['scenario']} | {r['repeat_idx']} | {r['n']} | {r['accuracy']:.3f} | {r['avg_calls']:.2f} |")
+    report_lines.append("")
+    
+    report_lines.append("## A2: Static vs Adaptive Routing (with Early Stop)\n")
+    report_lines.append("| Variant | Scenario | Repeat | N | Accuracy | Avg Calls |")
+    report_lines.append("|---------|----------|--------|---|----------|-----------|")
+    for r in sorted(a2_results, key=lambda x: (x["variant"], x["scenario"], x["repeat_idx"])):
         report_lines.append(f"| {r['variant']} | {r['scenario']} | {r['repeat_idx']} | {r['n']} | {r['accuracy']:.3f} | {r['avg_calls']:.2f} |")
     report_lines.append("")
     
@@ -435,6 +681,20 @@ def main(
     report_lines.append("|--------------|----------|--------|----------|")
     for r in sorted(c1_results, key=lambda x: (x["dropped_role"], x["scenario"], x["repeat_idx"])):
         report_lines.append(f"| {r['dropped_role']} | {r['scenario']} | {r['repeat_idx']} | {r['accuracy']:.3f} |")
+    report_lines.append("")
+    
+    report_lines.append("## D1: Clean vs Ambiguous (by margin < 0.08)\n")
+    report_lines.append("| Strategy | Scenario | Repeat | Subset | N | Accuracy |")
+    report_lines.append("|----------|----------|--------|--------|---|----------|")
+    for r in sorted(d1_results, key=lambda x: (x["strategy"], x["scenario"], x["repeat_idx"], x["subset"])):
+        report_lines.append(f"| {r['strategy']} | {r['scenario']} | {r['repeat_idx']} | {r['subset']} | {r['n']} | {r['accuracy']:.3f} |")
+    report_lines.append("")
+    
+    report_lines.append("## Constraint Violation Rate (must_fail chosen)\n")
+    report_lines.append("| Strategy | Scenario | Repeat | N | Violations | Rate |")
+    report_lines.append("|----------|----------|--------|---|------------|------|")
+    for r in sorted(violation_results, key=lambda x: (x["strategy"], x["scenario"], x["repeat_idx"])):
+        report_lines.append(f"| {r['strategy']} | {r['scenario']} | {r['repeat_idx']} | {r['n']} | {r['must_violations']} | {r['violation_rate']:.3f} |")
     report_lines.append("")
     
     report_path = out_dir / "ablation_report.md"
@@ -605,6 +865,142 @@ def main(
             fig.savefig(out_dir / "ablation_a3_threshold_sweep.png", dpi=150)
             plt.close(fig)
             typer.echo(f"Wrote {out_dir / 'ablation_a3_threshold_sweep.png'}")
+            
+            # --- A3: Pareto Curve (Accuracy vs Cost) ---
+            typer.echo("Generating A3 Pareto curve...")
+            fig, ax = plt.subplots(figsize=(8, 6))
+            
+            # Plot points for each threshold setting
+            for i, (t1, g) in enumerate(thresholds_list):
+                acc = acc_means[i]
+                calls = call_means[i]
+                ax.scatter(calls, acc, s=100, zorder=5)
+                ax.annotate(f"({t1:.1f},{g:.2f})", (calls, acc), 
+                           textcoords="offset points", xytext=(5, 5), fontsize=8)
+            
+            # Connect points to show trade-off
+            ax.plot(call_means, acc_means, 'b--', alpha=0.5, linewidth=1.5)
+            
+            ax.set_xlabel("Avg API Calls per Question", fontsize=12)
+            ax.set_ylabel("Accuracy", fontsize=12)
+            ax.set_title("Accuracy–Cost Pareto Curve (Threshold Sweep)", fontsize=13)
+            ax.set_xlim(3.0, 4.5)
+            ax.set_ylim(0.35, 0.42)
+            ax.grid(True, alpha=0.3)
+            plt.tight_layout()
+            fig.savefig(out_dir / "ablation_a3_pareto_curve.png", dpi=150)
+            plt.close(fig)
+            typer.echo(f"Wrote {out_dir / 'ablation_a3_pareto_curve.png'}")
+        
+        # --- A2: Static vs Adaptive Routing ---
+        if a2_results:
+            typer.echo("Generating A2 routing comparison...")
+            fig, axes = plt.subplots(1, 2, figsize=(12, 5))
+            
+            variants = ["static_routing_early_stop", "adaptive_routing_early_stop"]
+            variant_labels = ["Static Routing", "Adaptive Routing"]
+            
+            # Accuracy
+            ax = axes[0]
+            means = []
+            for v in variants:
+                vals = [r["accuracy"] for r in a2_results if r["variant"] == v]
+                means.append(np.mean(vals) if vals else 0)
+            bars = ax.bar(variant_labels, means, color=["#e15759", "#4e79a7"])
+            ax.set_ylabel("Accuracy", fontsize=12)
+            ax.set_title("Accuracy", fontsize=13)
+            ax.set_ylim(0, 0.5)
+            for bar in bars:
+                h = bar.get_height()
+                ax.annotate(f"{h:.3f}", xy=(bar.get_x() + bar.get_width() / 2, h),
+                            ha="center", va="bottom", fontsize=10)
+            
+            # Calls
+            ax = axes[1]
+            call_means = []
+            for v in variants:
+                vals = [r["avg_calls"] for r in a2_results if r["variant"] == v]
+                call_means.append(np.mean(vals) if vals else 0)
+            bars = ax.bar(variant_labels, call_means, color=["#e15759", "#4e79a7"])
+            ax.set_ylabel("Avg API Calls", fontsize=12)
+            ax.set_title("API Calls per Question", fontsize=13)
+            ax.set_ylim(0, 5)
+            for bar in bars:
+                h = bar.get_height()
+                ax.annotate(f"{h:.2f}", xy=(bar.get_x() + bar.get_width() / 2, h),
+                            ha="center", va="bottom", fontsize=10)
+            
+            fig.suptitle("Static vs Adaptive Routing (with Early Stop)", fontsize=14, y=1.02)
+            plt.tight_layout()
+            fig.savefig(out_dir / "ablation_a2_routing.png", dpi=150)
+            plt.close(fig)
+            typer.echo(f"Wrote {out_dir / 'ablation_a2_routing.png'}")
+        
+        # --- D1: Clean vs Ambiguous ---
+        if d1_results:
+            typer.echo("Generating D1 clean vs ambiguous chart...")
+            fig, ax = plt.subplots(figsize=(12, 6))
+            
+            strategies = sorted(set(r["strategy"] for r in d1_results))
+            x = np.arange(len(strategies))
+            width = 0.35
+            
+            clean_means = []
+            ambig_means = []
+            for s in strategies:
+                clean_vals = [r["accuracy"] for r in d1_results if r["strategy"] == s and r["subset"] == "clean"]
+                ambig_vals = [r["accuracy"] for r in d1_results if r["strategy"] == s and r["subset"] == "ambiguous"]
+                clean_means.append(np.mean(clean_vals) if clean_vals else 0)
+                ambig_means.append(np.mean(ambig_vals) if ambig_vals else 0)
+            
+            bars1 = ax.bar(x - width/2, clean_means, width, label="Clean (margin≥0.08)", color="#59a14f")
+            bars2 = ax.bar(x + width/2, ambig_means, width, label="Ambiguous (margin<0.08)", color="#e15759")
+            
+            ax.set_xticks(x)
+            ax.set_xticklabels(strategies, rotation=45, ha="right", fontsize=9)
+            ax.set_ylabel("Accuracy", fontsize=12)
+            ax.set_title("Clean vs Ambiguous Subset Performance", fontsize=13)
+            ax.set_ylim(0, 1.0)
+            ax.legend(loc="upper right")
+            ax.grid(True, alpha=0.3, axis="y")
+            plt.tight_layout()
+            fig.savefig(out_dir / "ablation_d1_clean_vs_ambiguous.png", dpi=150)
+            plt.close(fig)
+            typer.echo(f"Wrote {out_dir / 'ablation_d1_clean_vs_ambiguous.png'}")
+        
+        # --- Constraint Violation Rate ---
+        if violation_results:
+            typer.echo("Generating constraint violation chart...")
+            fig, ax = plt.subplots(figsize=(12, 6))
+            
+            strategies = sorted(set(r["strategy"] for r in violation_results))
+            x = np.arange(len(strategies))
+            
+            viol_means = []
+            for s in strategies:
+                vals = [r["violation_rate"] for r in violation_results if r["strategy"] == s]
+                viol_means.append(np.mean(vals) if vals else 0)
+            
+            colors = ["#e15759" if v > 0.15 else "#f28e2b" if v > 0.10 else "#59a14f" for v in viol_means]
+            bars = ax.bar(x, viol_means, color=colors)
+            
+            ax.set_xticks(x)
+            ax.set_xticklabels(strategies, rotation=45, ha="right", fontsize=9)
+            ax.set_ylabel("Constraint Violation Rate", fontsize=12)
+            ax.set_title("Must Constraint Violation Rate by Strategy", fontsize=13)
+            ax.set_ylim(0, 0.35)
+            ax.axhline(y=0.15, color="red", linestyle="--", alpha=0.5, label="High violation threshold")
+            ax.legend(loc="upper right")
+            
+            for bar in bars:
+                h = bar.get_height()
+                ax.annotate(f"{h:.2%}", xy=(bar.get_x() + bar.get_width() / 2, h),
+                            ha="center", va="bottom", fontsize=9)
+            
+            plt.tight_layout()
+            fig.savefig(out_dir / "ablation_constraint_violation.png", dpi=150)
+            plt.close(fig)
+            typer.echo(f"Wrote {out_dir / 'ablation_constraint_violation.png'}")
         
     except ImportError:
         typer.echo("matplotlib not available, skipping plot generation")
