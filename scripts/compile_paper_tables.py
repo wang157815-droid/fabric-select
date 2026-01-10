@@ -204,6 +204,34 @@ def main(
         else:
             pieces.append(f"### {table_id} {title}\n\n- **缺失**：未找到 `{fp.as_posix()}`\n\n")
 
+    # ---------- Cross-model sanity check (GPT-5) ----------
+    # 约定：将 gpt-5 复核的 summarize 输出到 outputs/figs_main_gpt5* 目录
+    extra_root = main_dir.parent
+    gpt5_dirs = sorted([p for p in extra_root.glob("figs_main_gpt5*") if p.is_dir()])
+    if gpt5_dirs:
+        pieces.append("## 跨模型复核（GPT-5 sanity check，子集）\n")
+        for d in gpt5_dirs:
+            pieces.append(f"### {d.name}\n")
+
+            # 最小可复核集合：overall + per-scenario + stats
+            v_table = pick_by_prefix(d, "paper_table1_overall")
+            if v_table:
+                pieces.append(_table_section_csv(title="Overall summary (GPT-5 sanity)", path=v_table, table_id=None))
+            else:
+                pieces.append(f"- **缺失**：未找到 `paper_table1_overall*.csv` 于 `{d.as_posix()}`\n")
+
+            v_sum = d / "summary_by_strategy.csv"
+            if v_sum.exists():
+                pieces.append(_table_section_csv(title="Per-scenario summary (GPT-5 sanity)", path=v_sum, table_id=None))
+            else:
+                pieces.append(f"- **缺失**：未找到 `{v_sum.as_posix()}`\n")
+
+            v_stats = d / "stats_tests.csv"
+            if v_stats.exists():
+                pieces.append(_table_section_csv(title="Stats tests (GPT-5 sanity)", path=v_stats, table_id=None, collapse_if_rows_ge=200))
+            else:
+                pieces.append(f"- **缺失**：未找到 `{v_stats.as_posix()}`\n")
+
     # ---------- Ablation tables ----------
     pieces.append("## 消融实验（Ablation）\n")
     ablation_md = ablation_dir / "ablation_report.md"
