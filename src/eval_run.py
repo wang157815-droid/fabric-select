@@ -12,6 +12,7 @@ import typer
 
 from .llm_client import OpenAIClient
 from .strategies_multi import run_multi_strategy
+from .strategies_non_llm import NON_LLM_STRATEGIES, run_non_llm_strategy
 from .strategies_single import run_single_strategy
 
 SINGLE_STRATEGIES = {"zero_shot", "few_shot", "cot_few_shot", "self_reflection", "fashionprompt"}
@@ -168,7 +169,9 @@ def _load_completed_qids(
                     and int(obj.get("repeat_idx", -1)) == int(repeat_idx)
                 ):
                     qid = str(obj.get("question_id") or "")
-                    if qid:
+                    # 仅将“成功解析出 A/B/C/D”的题目视为已完成，避免 pred=None 的失败样本在 resume 时被跳过
+                    pred = str(obj.get("pred") or "").strip()
+                    if qid and pred in ("A", "B", "C", "D"):
                         done.add(qid)
             except Exception:
                 continue
@@ -261,7 +264,10 @@ def _summarize_from_log(
 
 @app.command()
 def main(
-    strategy: str = typer.Option(..., help=f"策略名：单智能体={sorted(SINGLE_STRATEGIES)}；多智能体={sorted(MULTI_STRATEGIES)}"),
+    strategy: str = typer.Option(
+        ...,
+        help=f"策略名：非LLM={sorted(NON_LLM_STRATEGIES)}；单智能体={sorted(SINGLE_STRATEGIES)}；多智能体={sorted(MULTI_STRATEGIES)}",
+    ),
     scenario: str = typer.Option("outdoor_dwr_windbreaker", help="场景：outdoor_dwr_windbreaker / winter_warm_midlayer"),
     temperature: float = typer.Option(0.6, help="采样温度"),
     repeats: int = typer.Option(2, help="重复次数"),
@@ -301,7 +307,7 @@ def main(
         help="断点续跑：从 per_question_log 中读取已完成的 question_id 并跳过，仅重跑剩余题目。",
     ),
 ) -> None:
-    if strategy not in SINGLE_STRATEGIES and strategy not in MULTI_STRATEGIES:
+    if strategy not in SINGLE_STRATEGIES and strategy not in MULTI_STRATEGIES and strategy not in NON_LLM_STRATEGIES:
         raise typer.BadParameter(f"Unknown strategy: {strategy}")
 
     all_q = _read_jsonl(questions_path)
@@ -309,13 +315,21 @@ def main(
     if not q_pool:
         raise typer.BadParameter(f"No questions for scenario={scenario}. Check {questions_path}")
 
-    llm = OpenAIClient()
+    # 仅在需要 LLM 的策略时初始化 OpenAIClient，避免非LLM基线也依赖 API Key
+    llm: Optional[OpenAIClient] = None
+    if strategy in SINGLE_STRATEGIES or strategy in MULTI_STRATEGIES:
+        llm = OpenAIClient()
+        # gpt-5 系列（含 gpt-5-mini）在当前 API 行为下通常不支持自定义 temperature；
+        # 为避免“日志记录的 temperature 与实际调用不一致”，这里对 gpt-5* 强制 temperature=1.0。
+        if str(getattr(llm, "model", "")).startswith("gpt-5") and float(temperature) != 1.0:
+            typer.echo(f"[note] model={llm.model} does not support temperature={temperature}; forcing temperature=1.0")
+            temperature = 1.0
+        model_name = str(llm.model)
+    else:
+        # 非LLM基线：仍沿用 MODEL 环境变量作为“配置标签”，便于与主实验同一 config 下对比
+        import os
 
-    # gpt-5 系列（含 gpt-5-mini）在当前 API 行为下通常不支持自定义 temperature；
-    # 为避免“日志记录的 temperature 与实际调用不一致”，这里对 gpt-5* 强制 temperature=1.0。
-    if str(getattr(llm, "model", "")).startswith("gpt-5") and float(temperature) != 1.0:
-        typer.echo(f"[note] model={llm.model} does not support temperature={temperature}; forcing temperature=1.0")
-        temperature = 1.0
+        model_name = str(os.getenv("MODEL") or "gpt-5-mini")
 
     results_csv = out_dir / results_name
     log_jsonl = out_dir / log_name
@@ -341,7 +355,7 @@ def main(
                 max_tokens=max_tokens,
                 retry_on_none=retry_on_none,
                 retry_max_tokens=retry_max_tokens,
-                model=str(llm.model),
+                model=str(model_name),
             )
             if k in existing_keys:
                 typer.echo(f"[skip] existing result found for strategy={strategy} scenario={scenario} t={temperature} r={r} n={n} seed={seed} -> {results_csv}")
@@ -386,14 +400,20 @@ def main(
             # 给 LLM 的 seed：保证“同 repeat 内稳定”，不同题也不同
             call_seed: Optional[int] = (seed + r * 100_000 + qi) if seed is not None else None
 
-            if strategy in SINGLE_STRATEGIES:
+            if strategy in NON_LLM_STRATEGIES:
+                out = run_non_llm_strategy(q, strategy=strategy, seed=call_seed)
+            elif strategy in SINGLE_STRATEGIES:
+                if llm is None:
+                    raise RuntimeError("LLM client is not initialized for LLM strategy")
                 out = run_single_strategy(llm, q, strategy=strategy, temperature=temperature, max_tokens=max_tokens, seed=call_seed)
             else:
+                if llm is None:
+                    raise RuntimeError("LLM client is not initialized for LLM strategy")
                 out = run_multi_strategy(llm, q, strategy=strategy, temperature=temperature, max_tokens=max_tokens, seed=call_seed)
 
             pred = out.get("pick")
             retry_info: Optional[Dict[str, Any]] = None
-            # 仅对“单智能体”做重试：多智能体内部有 JSON fallback，pick 通常不会是 None
+            # 仅对“单智能体”做重试：非LLM/多智能体内部有 fallback，pick 通常不会是 None
             if (
                 strategy in SINGLE_STRATEGIES
                 and retry_on_none
@@ -534,7 +554,7 @@ def main(
             "log_messages": bool(log_messages),
             "correct": int(correct_total),
             "accuracy": acc,
-            "model": llm.model,
+            "model": model_name,
             "total_calls": int(total_calls_total),
             "total_tokens": int(total_tokens_total),
             "total_latency_s": round(float(total_latency_total), 6),

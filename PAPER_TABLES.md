@@ -1,6 +1,6 @@
 # 论文表格汇总（自动生成）
 
-- 生成时间：2026-01-10 15:26:24  
+- 生成时间：2026-01-10 18:34:29  
 - 脚本：`scripts/compile_paper_tables.py`
 
 ## 主实验（Main Results）
@@ -8,11 +8,13 @@
 ### Table 1 总体结果汇总（mean±std，含成本/可靠性指标）
 
 - **来源**: `outputs/figs_main/paper_table1_overall_questions_path-data_questions_v1_clean.jsonl__t1__n500__gpt-5-mini.csv`  
-- **行数**: 10  
+- **行数**: 12  
 - **列数**: 13
 
 | strategy | n | acc_mean | acc_std | tokens_mean | calls_mean | latency_mean | valid_output_rate_mean | llm_error_rate_mean | acc_mean__outdoor_dwr_windbreaker | acc_mean__winter_warm_midlayer | acc_std__outdoor_dwr_windbreaker | acc_std__winter_warm_midlayer |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| nonllm_feasible_random | 6 | 0.365 | 0.014 | 0 | 0.00 | 0.00 | 1.000 | 0 | 0.365 | 0.365 | 0.016 | 0.016 |
+| nonllm_simple_heuristic | 6 | 0.570 | 0.035 | 0 | 0.00 | 0.00 | 1.000 | 0 | 0.538 | 0.602 | 0.000 | 0.000 |
 | zero_shot | 6 | 0.572 | 0.039 | 2334 | 1.76 | 20.96 | 0.909 | 3.33e-04 | 0.601 | 0.543 | 0.025 | 0.025 |
 | few_shot | 6 | 0.780 | 0.035 | 2072 | 1.26 | 9.78 | 0.996 | 0.001 | 0.749 | 0.811 | 0.011 | 0.004 |
 | cot_few_shot | 6 | 0.642 | 0.110 | 1867 | 1.18 | 10.58 | 0.946 | 0.053 | 0.567 | 0.716 | 0.116 | 0.008 |
@@ -27,7 +29,7 @@
 ### Table 2 分场景结果汇总（每场景 mean±std）
 
 - **来源**: `outputs/figs_main/summary_by_strategy.csv`  
-- **行数**: 20  
+- **行数**: 24  
 - **列数**: 13
 
 | scenario | temperature | n_questions | model | strategy | n | acc_mean | acc_std | tokens_mean | calls_mean | latency_mean | valid_output_rate_mean | llm_error_rate_mean |
@@ -37,30 +39,34 @@
 | outdoor_dwr_windbreaker | 1 | 500 | gpt-5-mini | self_reflection | 3 | 0.701 | 0.001 | 3105 | 2.47 | 25.16 | 0.984 | 0.017 |
 | outdoor_dwr_windbreaker | 1 | 500 | gpt-5-mini | zero_shot | 3 | 0.601 | 0.025 | 2388 | 1.77 | 24.06 | 0.958 | 6.67e-04 |
 | outdoor_dwr_windbreaker | 1 | 500 | gpt-5-mini | cot_few_shot | 3 | 0.567 | 0.116 | 1836 | 1.25 | 11.84 | 0.893 | 0.107 |
+| outdoor_dwr_windbreaker | 1 | 500 | gpt-5-mini | nonllm_simple_heuristic | 3 | 0.538 | 0.000 | 0 | 0.00 | 0.00 | 1.000 | 0 |
 | outdoor_dwr_windbreaker | 1 | 500 | gpt-5-mini | weighted_voting | 3 | 0.419 | 0.027 | 6694 | 5.00 | 45.49 | 0.891 | 6.67e-04 |
 | outdoor_dwr_windbreaker | 1 | 500 | gpt-5-mini | voting | 3 | 0.412 | 0.019 | 6654 | 5.00 | 47.49 | 0.897 | 0.008 |
 | outdoor_dwr_windbreaker | 1 | 500 | gpt-5-mini | garmentagents_adaptive | 3 | 0.406 | 0.027 | 4881 | 3.64 | 31.23 | 0.870 | 6.67e-04 |
 | outdoor_dwr_windbreaker | 1 | 500 | gpt-5-mini | borda | 3 | 0.395 | 0.011 | 6695 | 5.00 | 45.11 | 0.907 | 0 |
 | outdoor_dwr_windbreaker | 1 | 500 | gpt-5-mini | garmentagents_fixed | 3 | 0.390 | 0.030 | 6701 | 5.00 | 43.59 | 0.891 | 0 |
+| outdoor_dwr_windbreaker | 1 | 500 | gpt-5-mini | nonllm_feasible_random | 3 | 0.365 | 0.016 | 0 | 0.00 | 0.00 | 1.000 | 0 |
 | winter_warm_midlayer | 1 | 500 | gpt-5-mini | few_shot | 3 | 0.811 | 0.004 | 2026 | 1.26 | 8.87 | 0.993 | 0.002 |
 | winter_warm_midlayer | 1 | 500 | gpt-5-mini | self_reflection | 3 | 0.769 | 0.030 | 2904 | 2.41 | 32.57 | 0.997 | 0.0067 |
 | winter_warm_midlayer | 1 | 500 | gpt-5-mini | fashionprompt | 3 | 0.758 | 0.007 | 2139 | 1.54 | 15.75 | 1.000 | 0 |
 | winter_warm_midlayer | 1 | 500 | gpt-5-mini | cot_few_shot | 3 | 0.716 | 0.008 | 1897 | 1.12 | 9.33 | 0.999 | 0 |
+| winter_warm_midlayer | 1 | 500 | gpt-5-mini | nonllm_simple_heuristic | 3 | 0.602 | 0.000 | 0 | 0.00 | 0.00 | 1.000 | 0 |
 | winter_warm_midlayer | 1 | 500 | gpt-5-mini | zero_shot | 3 | 0.543 | 0.025 | 2279 | 1.75 | 17.87 | 0.860 | 0 |
 | winter_warm_midlayer | 1 | 500 | gpt-5-mini | borda | 3 | 0.416 | 0.021 | 6401 | 5.00 | 40.30 | 0.849 | 0 |
 | winter_warm_midlayer | 1 | 500 | gpt-5-mini | weighted_voting | 3 | 0.410 | 0.005 | 6398 | 5.00 | 40.34 | 0.844 | 0.0013 |
 | winter_warm_midlayer | 1 | 500 | gpt-5-mini | voting | 3 | 0.406 | 0.017 | 6403 | 5.00 | 41.84 | 0.842 | 0 |
 | winter_warm_midlayer | 1 | 500 | gpt-5-mini | garmentagents_fixed | 3 | 0.405 | 0.017 | 6405 | 5.00 | 40.24 | 0.827 | 0 |
 | winter_warm_midlayer | 1 | 500 | gpt-5-mini | garmentagents_adaptive | 3 | 0.369 | 0.022 | 4899 | 3.82 | 31.93 | 0.819 | 0 |
+| winter_warm_midlayer | 1 | 500 | gpt-5-mini | nonllm_feasible_random | 3 | 0.365 | 0.016 | 0 | 0.00 | 0.00 | 1.000 | 0 |
 
 ### Table 3 按约束类型分组的准确率（mean±std）
 
 - **来源**: `outputs/figs_main/paper_acc_by_constraint.csv`  
-- **行数**: 100  
+- **行数**: 120  
 - **列数**: 6
 
 <details>
-<summary>展开表格（100 行）</summary>
+<summary>展开表格（120 行）</summary>
 
 | strategy | scenario | constraint | acc_mean | acc_std | n_runs |
 | --- | --- | --- | --- | --- | --- |
@@ -124,6 +130,26 @@
 | garmentagents_fixed | winter_warm_midlayer | lead | 0.388 | 0.048 | 3 |
 | garmentagents_fixed | winter_warm_midlayer | perf | 0.399 | 0.011 | 3 |
 | garmentagents_fixed | winter_warm_midlayer | weight | 0.405 | 0.009 | 3 |
+| nonllm_feasible_random | outdoor_dwr_windbreaker | compliance | 0.360 | 0.050 | 3 |
+| nonllm_feasible_random | outdoor_dwr_windbreaker | cost | 0.393 | 0.027 | 3 |
+| nonllm_feasible_random | outdoor_dwr_windbreaker | lead | 0.338 | 0.032 | 3 |
+| nonllm_feasible_random | outdoor_dwr_windbreaker | perf | 0.366 | 0.018 | 3 |
+| nonllm_feasible_random | outdoor_dwr_windbreaker | weight | 0.360 | 0.030 | 3 |
+| nonllm_feasible_random | winter_warm_midlayer | compliance | 0.376 | 0.069 | 3 |
+| nonllm_feasible_random | winter_warm_midlayer | cost | 0.381 | 0.019 | 3 |
+| nonllm_feasible_random | winter_warm_midlayer | lead | 0.350 | 0.058 | 3 |
+| nonllm_feasible_random | winter_warm_midlayer | perf | 0.358 | 0.014 | 3 |
+| nonllm_feasible_random | winter_warm_midlayer | weight | 0.361 | 0.042 | 3 |
+| nonllm_simple_heuristic | outdoor_dwr_windbreaker | compliance | 0.524 | 0.000 | 3 |
+| nonllm_simple_heuristic | outdoor_dwr_windbreaker | cost | 0.669 | 0.000 | 3 |
+| nonllm_simple_heuristic | outdoor_dwr_windbreaker | lead | 0.443 | 0.000 | 3 |
+| nonllm_simple_heuristic | outdoor_dwr_windbreaker | perf | 0.531 | 0.000 | 3 |
+| nonllm_simple_heuristic | outdoor_dwr_windbreaker | weight | 0.544 | 0.000 | 3 |
+| nonllm_simple_heuristic | winter_warm_midlayer | compliance | 0.576 | 0.000 | 3 |
+| nonllm_simple_heuristic | winter_warm_midlayer | cost | 0.569 | 0.000 | 3 |
+| nonllm_simple_heuristic | winter_warm_midlayer | lead | 0.693 | 0.000 | 3 |
+| nonllm_simple_heuristic | winter_warm_midlayer | perf | 0.596 | 0.000 | 3 |
+| nonllm_simple_heuristic | winter_warm_midlayer | weight | 0.593 | 0.000 | 3 |
 | self_reflection | outdoor_dwr_windbreaker | compliance | 0.701 | 0.017 | 3 |
 | self_reflection | outdoor_dwr_windbreaker | cost | 0.729 | 0.008 | 3 |
 | self_reflection | outdoor_dwr_windbreaker | lead | 0.682 | 0.004 | 3 |
@@ -171,11 +197,11 @@
 ### Table A1 按约束类型分组的准确率（每个 repeat/run）
 
 - **来源**: `outputs/figs_main/paper_acc_by_constraint_per_run.csv`  
-- **行数**: 305  
+- **行数**: 365  
 - **列数**: 8
 
 <details>
-<summary>展开表格（305 行）</summary>
+<summary>展开表格（365 行）</summary>
 
 | strategy | scenario | temperature | repeat_idx | seed | n | acc | constraint |
 | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -215,6 +241,18 @@
 | garmentagents_fixed | winter_warm_midlayer | 1 | 0 | 1000 | 167 | 0.377 | cost |
 | garmentagents_fixed | winter_warm_midlayer | 1 | 1 | 1000 | 167 | 0.413 | cost |
 | garmentagents_fixed | winter_warm_midlayer | 1 | 2 | 1000 | 167 | 0.401 | cost |
+| nonllm_feasible_random | outdoor_dwr_windbreaker | 1 | 0 | 1000 | 118 | 0.373 | cost |
+| nonllm_feasible_random | outdoor_dwr_windbreaker | 1 | 1 | 1000 | 118 | 0.381 | cost |
+| nonllm_feasible_random | outdoor_dwr_windbreaker | 1 | 2 | 1000 | 118 | 0.424 | cost |
+| nonllm_feasible_random | winter_warm_midlayer | 1 | 0 | 1000 | 167 | 0.359 | cost |
+| nonllm_feasible_random | winter_warm_midlayer | 1 | 1 | 1000 | 167 | 0.395 | cost |
+| nonllm_feasible_random | winter_warm_midlayer | 1 | 2 | 1000 | 167 | 0.389 | cost |
+| nonllm_simple_heuristic | outdoor_dwr_windbreaker | 1 | 0 | 1000 | 118 | 0.669 | cost |
+| nonllm_simple_heuristic | outdoor_dwr_windbreaker | 1 | 1 | 1000 | 118 | 0.669 | cost |
+| nonllm_simple_heuristic | outdoor_dwr_windbreaker | 1 | 2 | 1000 | 118 | 0.669 | cost |
+| nonllm_simple_heuristic | winter_warm_midlayer | 1 | 0 | 1000 | 167 | 0.569 | cost |
+| nonllm_simple_heuristic | winter_warm_midlayer | 1 | 1 | 1000 | 167 | 0.569 | cost |
+| nonllm_simple_heuristic | winter_warm_midlayer | 1 | 2 | 1000 | 167 | 0.569 | cost |
 | self_reflection | outdoor_dwr_windbreaker | 1 | 0 | 1000 | 118 | 0.729 | cost |
 | self_reflection | outdoor_dwr_windbreaker | 1 | 1 | 1000 | 118 | 0.737 | cost |
 | self_reflection | outdoor_dwr_windbreaker | 1 | 2 | 1000 | 118 | 0.720 | cost |
@@ -276,6 +314,18 @@
 | garmentagents_fixed | winter_warm_midlayer | 1 | 0 | 1000 | 140 | 0.429 | lead |
 | garmentagents_fixed | winter_warm_midlayer | 1 | 1 | 1000 | 140 | 0.336 | lead |
 | garmentagents_fixed | winter_warm_midlayer | 1 | 2 | 1000 | 140 | 0.400 | lead |
+| nonllm_feasible_random | outdoor_dwr_windbreaker | 1 | 0 | 1000 | 149 | 0.302 | lead |
+| nonllm_feasible_random | outdoor_dwr_windbreaker | 1 | 1 | 1000 | 149 | 0.362 | lead |
+| nonllm_feasible_random | outdoor_dwr_windbreaker | 1 | 2 | 1000 | 149 | 0.349 | lead |
+| nonllm_feasible_random | winter_warm_midlayer | 1 | 0 | 1000 | 140 | 0.286 | lead |
+| nonllm_feasible_random | winter_warm_midlayer | 1 | 1 | 1000 | 140 | 0.364 | lead |
+| nonllm_feasible_random | winter_warm_midlayer | 1 | 2 | 1000 | 140 | 0.400 | lead |
+| nonllm_simple_heuristic | outdoor_dwr_windbreaker | 1 | 0 | 1000 | 149 | 0.443 | lead |
+| nonllm_simple_heuristic | outdoor_dwr_windbreaker | 1 | 1 | 1000 | 149 | 0.443 | lead |
+| nonllm_simple_heuristic | outdoor_dwr_windbreaker | 1 | 2 | 1000 | 149 | 0.443 | lead |
+| nonllm_simple_heuristic | winter_warm_midlayer | 1 | 0 | 1000 | 140 | 0.693 | lead |
+| nonllm_simple_heuristic | winter_warm_midlayer | 1 | 1 | 1000 | 140 | 0.693 | lead |
+| nonllm_simple_heuristic | winter_warm_midlayer | 1 | 2 | 1000 | 140 | 0.693 | lead |
 | self_reflection | outdoor_dwr_windbreaker | 1 | 0 | 1000 | 149 | 0.685 | lead |
 | self_reflection | outdoor_dwr_windbreaker | 1 | 1 | 1000 | 149 | 0.678 | lead |
 | self_reflection | outdoor_dwr_windbreaker | 1 | 2 | 1000 | 149 | 0.685 | lead |
@@ -337,6 +387,18 @@
 | garmentagents_fixed | winter_warm_midlayer | 1 | 0 | 1000 | 170 | 0.447 | compliance |
 | garmentagents_fixed | winter_warm_midlayer | 1 | 1 | 1000 | 170 | 0.382 | compliance |
 | garmentagents_fixed | winter_warm_midlayer | 1 | 2 | 1000 | 170 | 0.394 | compliance |
+| nonllm_feasible_random | outdoor_dwr_windbreaker | 1 | 0 | 1000 | 185 | 0.389 | compliance |
+| nonllm_feasible_random | outdoor_dwr_windbreaker | 1 | 1 | 1000 | 185 | 0.389 | compliance |
+| nonllm_feasible_random | outdoor_dwr_windbreaker | 1 | 2 | 1000 | 185 | 0.303 | compliance |
+| nonllm_feasible_random | winter_warm_midlayer | 1 | 0 | 1000 | 170 | 0.300 | compliance |
+| nonllm_feasible_random | winter_warm_midlayer | 1 | 1 | 1000 | 170 | 0.435 | compliance |
+| nonllm_feasible_random | winter_warm_midlayer | 1 | 2 | 1000 | 170 | 0.394 | compliance |
+| nonllm_simple_heuristic | outdoor_dwr_windbreaker | 1 | 0 | 1000 | 185 | 0.524 | compliance |
+| nonllm_simple_heuristic | outdoor_dwr_windbreaker | 1 | 1 | 1000 | 185 | 0.524 | compliance |
+| nonllm_simple_heuristic | outdoor_dwr_windbreaker | 1 | 2 | 1000 | 185 | 0.524 | compliance |
+| nonllm_simple_heuristic | winter_warm_midlayer | 1 | 0 | 1000 | 170 | 0.576 | compliance |
+| nonllm_simple_heuristic | winter_warm_midlayer | 1 | 1 | 1000 | 170 | 0.576 | compliance |
+| nonllm_simple_heuristic | winter_warm_midlayer | 1 | 2 | 1000 | 170 | 0.576 | compliance |
 | self_reflection | outdoor_dwr_windbreaker | 1 | 0 | 1000 | 185 | 0.708 | compliance |
 | self_reflection | outdoor_dwr_windbreaker | 1 | 1 | 1000 | 185 | 0.714 | compliance |
 | self_reflection | outdoor_dwr_windbreaker | 1 | 2 | 1000 | 185 | 0.681 | compliance |
@@ -398,6 +460,18 @@
 | garmentagents_fixed | winter_warm_midlayer | 1 | 0 | 1000 | 167 | 0.413 | weight |
 | garmentagents_fixed | winter_warm_midlayer | 1 | 1 | 1000 | 167 | 0.395 | weight |
 | garmentagents_fixed | winter_warm_midlayer | 1 | 2 | 1000 | 167 | 0.407 | weight |
+| nonllm_feasible_random | outdoor_dwr_windbreaker | 1 | 0 | 1000 | 298 | 0.326 | weight |
+| nonllm_feasible_random | outdoor_dwr_windbreaker | 1 | 1 | 1000 | 298 | 0.383 | weight |
+| nonllm_feasible_random | outdoor_dwr_windbreaker | 1 | 2 | 1000 | 298 | 0.372 | weight |
+| nonllm_feasible_random | winter_warm_midlayer | 1 | 0 | 1000 | 167 | 0.365 | weight |
+| nonllm_feasible_random | winter_warm_midlayer | 1 | 1 | 1000 | 167 | 0.401 | weight |
+| nonllm_feasible_random | winter_warm_midlayer | 1 | 2 | 1000 | 167 | 0.317 | weight |
+| nonllm_simple_heuristic | outdoor_dwr_windbreaker | 1 | 0 | 1000 | 298 | 0.544 | weight |
+| nonllm_simple_heuristic | outdoor_dwr_windbreaker | 1 | 1 | 1000 | 298 | 0.544 | weight |
+| nonllm_simple_heuristic | outdoor_dwr_windbreaker | 1 | 2 | 1000 | 298 | 0.544 | weight |
+| nonllm_simple_heuristic | winter_warm_midlayer | 1 | 0 | 1000 | 167 | 0.593 | weight |
+| nonllm_simple_heuristic | winter_warm_midlayer | 1 | 1 | 1000 | 167 | 0.593 | weight |
+| nonllm_simple_heuristic | winter_warm_midlayer | 1 | 2 | 1000 | 167 | 0.593 | weight |
 | self_reflection | outdoor_dwr_windbreaker | 1 | 0 | 1000 | 298 | 0.718 | weight |
 | self_reflection | outdoor_dwr_windbreaker | 1 | 1 | 1000 | 298 | 0.718 | weight |
 | self_reflection | outdoor_dwr_windbreaker | 1 | 2 | 1000 | 298 | 0.715 | weight |
@@ -459,6 +533,18 @@
 | garmentagents_fixed | winter_warm_midlayer | 1 | 0 | 1000 | 436 | 0.411 | perf |
 | garmentagents_fixed | winter_warm_midlayer | 1 | 1 | 1000 | 436 | 0.390 | perf |
 | garmentagents_fixed | winter_warm_midlayer | 1 | 2 | 1000 | 436 | 0.397 | perf |
+| nonllm_feasible_random | outdoor_dwr_windbreaker | 1 | 0 | 1000 | 452 | 0.345 | perf |
+| nonllm_feasible_random | outdoor_dwr_windbreaker | 1 | 1 | 1000 | 452 | 0.372 | perf |
+| nonllm_feasible_random | outdoor_dwr_windbreaker | 1 | 2 | 1000 | 452 | 0.381 | perf |
+| nonllm_feasible_random | winter_warm_midlayer | 1 | 0 | 1000 | 436 | 0.342 | perf |
+| nonllm_feasible_random | winter_warm_midlayer | 1 | 1 | 1000 | 436 | 0.369 | perf |
+| nonllm_feasible_random | winter_warm_midlayer | 1 | 2 | 1000 | 436 | 0.362 | perf |
+| nonllm_simple_heuristic | outdoor_dwr_windbreaker | 1 | 0 | 1000 | 452 | 0.531 | perf |
+| nonllm_simple_heuristic | outdoor_dwr_windbreaker | 1 | 1 | 1000 | 452 | 0.531 | perf |
+| nonllm_simple_heuristic | outdoor_dwr_windbreaker | 1 | 2 | 1000 | 452 | 0.531 | perf |
+| nonllm_simple_heuristic | winter_warm_midlayer | 1 | 0 | 1000 | 436 | 0.596 | perf |
+| nonllm_simple_heuristic | winter_warm_midlayer | 1 | 1 | 1000 | 436 | 0.596 | perf |
+| nonllm_simple_heuristic | winter_warm_midlayer | 1 | 2 | 1000 | 436 | 0.596 | perf |
 | self_reflection | outdoor_dwr_windbreaker | 1 | 0 | 1000 | 452 | 0.704 | perf |
 | self_reflection | outdoor_dwr_windbreaker | 1 | 1 | 1000 | 452 | 0.699 | perf |
 | self_reflection | outdoor_dwr_windbreaker | 1 | 2 | 1000 | 452 | 0.701 | perf |
@@ -491,7 +577,7 @@
 ### Table 4 按难度分组的准确率（mean±std）
 
 - **来源**: `outputs/figs_main/paper_acc_by_difficulty.csv`  
-- **行数**: 60  
+- **行数**: 72  
 - **列数**: 5
 
 | strategy | scenario | difficulty | acc_mean | acc_std |
@@ -532,6 +618,18 @@
 | garmentagents_fixed | winter_warm_midlayer | easy | 0.491 | 0.032 |
 | garmentagents_fixed | winter_warm_midlayer | hard | 0.351 | 0.000 |
 | garmentagents_fixed | winter_warm_midlayer | medium | 0.375 | 0.020 |
+| nonllm_feasible_random | outdoor_dwr_windbreaker | easy | 0.374 | 0.022 |
+| nonllm_feasible_random | outdoor_dwr_windbreaker | hard | 0.378 | 0.048 |
+| nonllm_feasible_random | outdoor_dwr_windbreaker | medium | 0.343 | 0.052 |
+| nonllm_feasible_random | winter_warm_midlayer | easy | 0.376 | 0.021 |
+| nonllm_feasible_random | winter_warm_midlayer | hard | 0.377 | 0.048 |
+| nonllm_feasible_random | winter_warm_midlayer | medium | 0.342 | 0.061 |
+| nonllm_simple_heuristic | outdoor_dwr_windbreaker | easy | 0.607 | 0.000 |
+| nonllm_simple_heuristic | outdoor_dwr_windbreaker | hard | 0.506 | 0.000 |
+| nonllm_simple_heuristic | outdoor_dwr_windbreaker | medium | 0.503 | 0.000 |
+| nonllm_simple_heuristic | winter_warm_midlayer | easy | 0.752 | 0.000 |
+| nonllm_simple_heuristic | winter_warm_midlayer | hard | 0.517 | 0.000 |
+| nonllm_simple_heuristic | winter_warm_midlayer | medium | 0.540 | 0.000 |
 | self_reflection | outdoor_dwr_windbreaker | easy | 0.845 | 0.029 |
 | self_reflection | outdoor_dwr_windbreaker | hard | 0.629 | 0.027 |
 | self_reflection | outdoor_dwr_windbreaker | medium | 0.633 | 0.047 |
@@ -560,11 +658,11 @@
 ### Table A2 按难度分组的准确率（每个 repeat/run）
 
 - **来源**: `outputs/figs_main/paper_acc_by_difficulty_per_run.csv`  
-- **行数**: 181  
+- **行数**: 217  
 - **列数**: 8
 
 <details>
-<summary>展开表格（181 行）</summary>
+<summary>展开表格（217 行）</summary>
 
 | strategy | scenario | temperature | repeat_idx | seed | difficulty | n | acc |
 | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -676,6 +774,42 @@
 | garmentagents_fixed | winter_warm_midlayer | 1 | 2 | 1000 | easy | 165 | 0.479 |
 | garmentagents_fixed | winter_warm_midlayer | 1 | 2 | 1000 | hard | 174 | 0.351 |
 | garmentagents_fixed | winter_warm_midlayer | 1 | 2 | 1000 | medium | 161 | 0.366 |
+| nonllm_feasible_random | outdoor_dwr_windbreaker | 1 | 0 | 1000 | easy | 163 | 0.356 |
+| nonllm_feasible_random | outdoor_dwr_windbreaker | 1 | 0 | 1000 | hard | 170 | 0.400 |
+| nonllm_feasible_random | outdoor_dwr_windbreaker | 1 | 0 | 1000 | medium | 167 | 0.287 |
+| nonllm_feasible_random | outdoor_dwr_windbreaker | 1 | 1 | 1000 | easy | 163 | 0.368 |
+| nonllm_feasible_random | outdoor_dwr_windbreaker | 1 | 1 | 1000 | hard | 170 | 0.412 |
+| nonllm_feasible_random | outdoor_dwr_windbreaker | 1 | 1 | 1000 | medium | 167 | 0.353 |
+| nonllm_feasible_random | outdoor_dwr_windbreaker | 1 | 2 | 1000 | easy | 163 | 0.399 |
+| nonllm_feasible_random | outdoor_dwr_windbreaker | 1 | 2 | 1000 | hard | 170 | 0.324 |
+| nonllm_feasible_random | outdoor_dwr_windbreaker | 1 | 2 | 1000 | medium | 167 | 0.389 |
+| nonllm_feasible_random | winter_warm_midlayer | 1 | 0 | 1000 | easy | 165 | 0.364 |
+| nonllm_feasible_random | winter_warm_midlayer | 1 | 0 | 1000 | hard | 174 | 0.402 |
+| nonllm_feasible_random | winter_warm_midlayer | 1 | 0 | 1000 | medium | 161 | 0.273 |
+| nonllm_feasible_random | winter_warm_midlayer | 1 | 1 | 1000 | easy | 165 | 0.364 |
+| nonllm_feasible_random | winter_warm_midlayer | 1 | 1 | 1000 | hard | 174 | 0.408 |
+| nonllm_feasible_random | winter_warm_midlayer | 1 | 1 | 1000 | medium | 161 | 0.360 |
+| nonllm_feasible_random | winter_warm_midlayer | 1 | 2 | 1000 | easy | 165 | 0.400 |
+| nonllm_feasible_random | winter_warm_midlayer | 1 | 2 | 1000 | hard | 174 | 0.322 |
+| nonllm_feasible_random | winter_warm_midlayer | 1 | 2 | 1000 | medium | 161 | 0.391 |
+| nonllm_simple_heuristic | outdoor_dwr_windbreaker | 1 | 0 | 1000 | easy | 163 | 0.607 |
+| nonllm_simple_heuristic | outdoor_dwr_windbreaker | 1 | 0 | 1000 | hard | 170 | 0.506 |
+| nonllm_simple_heuristic | outdoor_dwr_windbreaker | 1 | 0 | 1000 | medium | 167 | 0.503 |
+| nonllm_simple_heuristic | outdoor_dwr_windbreaker | 1 | 1 | 1000 | easy | 163 | 0.607 |
+| nonllm_simple_heuristic | outdoor_dwr_windbreaker | 1 | 1 | 1000 | hard | 170 | 0.506 |
+| nonllm_simple_heuristic | outdoor_dwr_windbreaker | 1 | 1 | 1000 | medium | 167 | 0.503 |
+| nonllm_simple_heuristic | outdoor_dwr_windbreaker | 1 | 2 | 1000 | easy | 163 | 0.607 |
+| nonllm_simple_heuristic | outdoor_dwr_windbreaker | 1 | 2 | 1000 | hard | 170 | 0.506 |
+| nonllm_simple_heuristic | outdoor_dwr_windbreaker | 1 | 2 | 1000 | medium | 167 | 0.503 |
+| nonllm_simple_heuristic | winter_warm_midlayer | 1 | 0 | 1000 | easy | 165 | 0.752 |
+| nonllm_simple_heuristic | winter_warm_midlayer | 1 | 0 | 1000 | hard | 174 | 0.517 |
+| nonllm_simple_heuristic | winter_warm_midlayer | 1 | 0 | 1000 | medium | 161 | 0.540 |
+| nonllm_simple_heuristic | winter_warm_midlayer | 1 | 1 | 1000 | easy | 165 | 0.752 |
+| nonllm_simple_heuristic | winter_warm_midlayer | 1 | 1 | 1000 | hard | 174 | 0.517 |
+| nonllm_simple_heuristic | winter_warm_midlayer | 1 | 1 | 1000 | medium | 161 | 0.540 |
+| nonllm_simple_heuristic | winter_warm_midlayer | 1 | 2 | 1000 | easy | 165 | 0.752 |
+| nonllm_simple_heuristic | winter_warm_midlayer | 1 | 2 | 1000 | hard | 174 | 0.517 |
+| nonllm_simple_heuristic | winter_warm_midlayer | 1 | 2 | 1000 | medium | 161 | 0.540 |
 | self_reflection | outdoor_dwr_windbreaker | 1 | 0 | 1000 | easy | 163 | 0.822 |
 | self_reflection | outdoor_dwr_windbreaker | 1 | 0 | 1000 | hard | 170 | 0.635 |
 | self_reflection | outdoor_dwr_windbreaker | 1 | 0 | 1000 | medium | 167 | 0.647 |
@@ -756,11 +890,11 @@
 ### Table 5 统计检验（Kruskal–Wallis / Mann–Whitney U + BH-FDR）
 
 - **来源**: `outputs/figs_main/stats_tests.csv`  
-- **行数**: 112  
+- **行数**: 158  
 - **列数**: 8
 
 <details>
-<summary>展开表格（112 行）</summary>
+<summary>展开表格（158 行）</summary>
 
 | scenario | temperature | n_questions | model | test | strategy | p | bh_reject@0.05 |
 | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -770,16 +904,20 @@
 | outdoor_dwr_windbreaker | 1 | 500 | gpt-5-mini | shapiro | few_shot | 0.174 |  |
 | outdoor_dwr_windbreaker | 1 | 500 | gpt-5-mini | shapiro | garmentagents_adaptive | 0.637 |  |
 | outdoor_dwr_windbreaker | 1 | 500 | gpt-5-mini | shapiro | garmentagents_fixed | 0.194 |  |
+| outdoor_dwr_windbreaker | 1 | 500 | gpt-5-mini | shapiro | nonllm_feasible_random | 0.497 |  |
+| outdoor_dwr_windbreaker | 1 | 500 | gpt-5-mini | shapiro | nonllm_simple_heuristic | 1 |  |
 | outdoor_dwr_windbreaker | 1 | 500 | gpt-5-mini | shapiro | self_reflection | 0 |  |
 | outdoor_dwr_windbreaker | 1 | 500 | gpt-5-mini | shapiro | voting | 0.826 |  |
 | outdoor_dwr_windbreaker | 1 | 500 | gpt-5-mini | shapiro | weighted_voting | 0.716 |  |
 | outdoor_dwr_windbreaker | 1 | 500 | gpt-5-mini | shapiro | zero_shot | 0.23 |  |
-| outdoor_dwr_windbreaker | 1 | 500 | gpt-5-mini | kruskal_wallis | ALL | 0.00226 |  |
+| outdoor_dwr_windbreaker | 1 | 500 | gpt-5-mini | kruskal_wallis | ALL | 0.000739 |  |
 | outdoor_dwr_windbreaker | 1 | 500 | gpt-5-mini | mannwhitneyu | borda vs cot_few_shot | 0.1 | False |
 | outdoor_dwr_windbreaker | 1 | 500 | gpt-5-mini | mannwhitneyu | borda vs fashionprompt | 0.1 | False |
 | outdoor_dwr_windbreaker | 1 | 500 | gpt-5-mini | mannwhitneyu | borda vs few_shot | 0.1 | False |
 | outdoor_dwr_windbreaker | 1 | 500 | gpt-5-mini | mannwhitneyu | borda vs garmentagents_adaptive | 0.7 | False |
 | outdoor_dwr_windbreaker | 1 | 500 | gpt-5-mini | mannwhitneyu | borda vs garmentagents_fixed | 1 | False |
+| outdoor_dwr_windbreaker | 1 | 500 | gpt-5-mini | mannwhitneyu | borda vs nonllm_feasible_random | 0.1 | False |
+| outdoor_dwr_windbreaker | 1 | 500 | gpt-5-mini | mannwhitneyu | borda vs nonllm_simple_heuristic | 0.0636 | False |
 | outdoor_dwr_windbreaker | 1 | 500 | gpt-5-mini | mannwhitneyu | borda vs self_reflection | 0.0765 | False |
 | outdoor_dwr_windbreaker | 1 | 500 | gpt-5-mini | mannwhitneyu | borda vs voting | 0.268 | False |
 | outdoor_dwr_windbreaker | 1 | 500 | gpt-5-mini | mannwhitneyu | borda vs weighted_voting | 0.4 | False |
@@ -788,6 +926,8 @@
 | outdoor_dwr_windbreaker | 1 | 500 | gpt-5-mini | mannwhitneyu | cot_few_shot vs few_shot | 0.1 | False |
 | outdoor_dwr_windbreaker | 1 | 500 | gpt-5-mini | mannwhitneyu | cot_few_shot vs garmentagents_adaptive | 0.1 | False |
 | outdoor_dwr_windbreaker | 1 | 500 | gpt-5-mini | mannwhitneyu | cot_few_shot vs garmentagents_fixed | 0.1 | False |
+| outdoor_dwr_windbreaker | 1 | 500 | gpt-5-mini | mannwhitneyu | cot_few_shot vs nonllm_feasible_random | 0.1 | False |
+| outdoor_dwr_windbreaker | 1 | 500 | gpt-5-mini | mannwhitneyu | cot_few_shot vs nonllm_simple_heuristic | 0.643 | False |
 | outdoor_dwr_windbreaker | 1 | 500 | gpt-5-mini | mannwhitneyu | cot_few_shot vs self_reflection | 0.0765 | False |
 | outdoor_dwr_windbreaker | 1 | 500 | gpt-5-mini | mannwhitneyu | cot_few_shot vs voting | 0.1 | False |
 | outdoor_dwr_windbreaker | 1 | 500 | gpt-5-mini | mannwhitneyu | cot_few_shot vs weighted_voting | 0.2 | False |
@@ -795,25 +935,42 @@
 | outdoor_dwr_windbreaker | 1 | 500 | gpt-5-mini | mannwhitneyu | fashionprompt vs few_shot | 0.1 | False |
 | outdoor_dwr_windbreaker | 1 | 500 | gpt-5-mini | mannwhitneyu | fashionprompt vs garmentagents_adaptive | 0.1 | False |
 | outdoor_dwr_windbreaker | 1 | 500 | gpt-5-mini | mannwhitneyu | fashionprompt vs garmentagents_fixed | 0.1 | False |
+| outdoor_dwr_windbreaker | 1 | 500 | gpt-5-mini | mannwhitneyu | fashionprompt vs nonllm_feasible_random | 0.1 | False |
+| outdoor_dwr_windbreaker | 1 | 500 | gpt-5-mini | mannwhitneyu | fashionprompt vs nonllm_simple_heuristic | 0.0636 | False |
 | outdoor_dwr_windbreaker | 1 | 500 | gpt-5-mini | mannwhitneyu | fashionprompt vs self_reflection | 0.0765 | False |
 | outdoor_dwr_windbreaker | 1 | 500 | gpt-5-mini | mannwhitneyu | fashionprompt vs voting | 0.1 | False |
 | outdoor_dwr_windbreaker | 1 | 500 | gpt-5-mini | mannwhitneyu | fashionprompt vs weighted_voting | 0.1 | False |
 | outdoor_dwr_windbreaker | 1 | 500 | gpt-5-mini | mannwhitneyu | fashionprompt vs zero_shot | 0.1 | False |
 | outdoor_dwr_windbreaker | 1 | 500 | gpt-5-mini | mannwhitneyu | few_shot vs garmentagents_adaptive | 0.1 | False |
 | outdoor_dwr_windbreaker | 1 | 500 | gpt-5-mini | mannwhitneyu | few_shot vs garmentagents_fixed | 0.1 | False |
+| outdoor_dwr_windbreaker | 1 | 500 | gpt-5-mini | mannwhitneyu | few_shot vs nonllm_feasible_random | 0.1 | False |
+| outdoor_dwr_windbreaker | 1 | 500 | gpt-5-mini | mannwhitneyu | few_shot vs nonllm_simple_heuristic | 0.0636 | False |
 | outdoor_dwr_windbreaker | 1 | 500 | gpt-5-mini | mannwhitneyu | few_shot vs self_reflection | 0.0765 | False |
 | outdoor_dwr_windbreaker | 1 | 500 | gpt-5-mini | mannwhitneyu | few_shot vs voting | 0.1 | False |
 | outdoor_dwr_windbreaker | 1 | 500 | gpt-5-mini | mannwhitneyu | few_shot vs weighted_voting | 0.1 | False |
 | outdoor_dwr_windbreaker | 1 | 500 | gpt-5-mini | mannwhitneyu | few_shot vs zero_shot | 0.1 | False |
 | outdoor_dwr_windbreaker | 1 | 500 | gpt-5-mini | mannwhitneyu | garmentagents_adaptive vs garmentagents_fixed | 0.4 | False |
+| outdoor_dwr_windbreaker | 1 | 500 | gpt-5-mini | mannwhitneyu | garmentagents_adaptive vs nonllm_feasible_random | 0.2 | False |
+| outdoor_dwr_windbreaker | 1 | 500 | gpt-5-mini | mannwhitneyu | garmentagents_adaptive vs nonllm_simple_heuristic | 0.0636 | False |
 | outdoor_dwr_windbreaker | 1 | 500 | gpt-5-mini | mannwhitneyu | garmentagents_adaptive vs self_reflection | 0.0765 | False |
 | outdoor_dwr_windbreaker | 1 | 500 | gpt-5-mini | mannwhitneyu | garmentagents_adaptive vs voting | 0.825 | False |
 | outdoor_dwr_windbreaker | 1 | 500 | gpt-5-mini | mannwhitneyu | garmentagents_adaptive vs weighted_voting | 0.7 | False |
 | outdoor_dwr_windbreaker | 1 | 500 | gpt-5-mini | mannwhitneyu | garmentagents_adaptive vs zero_shot | 0.1 | False |
+| outdoor_dwr_windbreaker | 1 | 500 | gpt-5-mini | mannwhitneyu | garmentagents_fixed vs nonllm_feasible_random | 0.4 | False |
+| outdoor_dwr_windbreaker | 1 | 500 | gpt-5-mini | mannwhitneyu | garmentagents_fixed vs nonllm_simple_heuristic | 0.0636 | False |
 | outdoor_dwr_windbreaker | 1 | 500 | gpt-5-mini | mannwhitneyu | garmentagents_fixed vs self_reflection | 0.0765 | False |
 | outdoor_dwr_windbreaker | 1 | 500 | gpt-5-mini | mannwhitneyu | garmentagents_fixed vs voting | 0.4 | False |
 | outdoor_dwr_windbreaker | 1 | 500 | gpt-5-mini | mannwhitneyu | garmentagents_fixed vs weighted_voting | 0.4 | False |
 | outdoor_dwr_windbreaker | 1 | 500 | gpt-5-mini | mannwhitneyu | garmentagents_fixed vs zero_shot | 0.1 | False |
+| outdoor_dwr_windbreaker | 1 | 500 | gpt-5-mini | mannwhitneyu | nonllm_feasible_random vs nonllm_simple_heuristic | 0.0636 | False |
+| outdoor_dwr_windbreaker | 1 | 500 | gpt-5-mini | mannwhitneyu | nonllm_feasible_random vs self_reflection | 0.0765 | False |
+| outdoor_dwr_windbreaker | 1 | 500 | gpt-5-mini | mannwhitneyu | nonllm_feasible_random vs voting | 0.1 | False |
+| outdoor_dwr_windbreaker | 1 | 500 | gpt-5-mini | mannwhitneyu | nonllm_feasible_random vs weighted_voting | 0.1 | False |
+| outdoor_dwr_windbreaker | 1 | 500 | gpt-5-mini | mannwhitneyu | nonllm_feasible_random vs zero_shot | 0.1 | False |
+| outdoor_dwr_windbreaker | 1 | 500 | gpt-5-mini | mannwhitneyu | nonllm_simple_heuristic vs self_reflection | 0.0593 | False |
+| outdoor_dwr_windbreaker | 1 | 500 | gpt-5-mini | mannwhitneyu | nonllm_simple_heuristic vs voting | 0.0636 | False |
+| outdoor_dwr_windbreaker | 1 | 500 | gpt-5-mini | mannwhitneyu | nonllm_simple_heuristic vs weighted_voting | 0.0636 | False |
+| outdoor_dwr_windbreaker | 1 | 500 | gpt-5-mini | mannwhitneyu | nonllm_simple_heuristic vs zero_shot | 0.0636 | False |
 | outdoor_dwr_windbreaker | 1 | 500 | gpt-5-mini | mannwhitneyu | self_reflection vs voting | 0.0765 | False |
 | outdoor_dwr_windbreaker | 1 | 500 | gpt-5-mini | mannwhitneyu | self_reflection vs weighted_voting | 0.0765 | False |
 | outdoor_dwr_windbreaker | 1 | 500 | gpt-5-mini | mannwhitneyu | self_reflection vs zero_shot | 0.0765 | False |
@@ -826,16 +983,20 @@
 | winter_warm_midlayer | 1 | 500 | gpt-5-mini | shapiro | few_shot | 0.463 |  |
 | winter_warm_midlayer | 1 | 500 | gpt-5-mini | shapiro | garmentagents_adaptive | 0.266 |  |
 | winter_warm_midlayer | 1 | 500 | gpt-5-mini | shapiro | garmentagents_fixed | 0.339 |  |
+| winter_warm_midlayer | 1 | 500 | gpt-5-mini | shapiro | nonllm_feasible_random | 0.497 |  |
+| winter_warm_midlayer | 1 | 500 | gpt-5-mini | shapiro | nonllm_simple_heuristic | 1 |  |
 | winter_warm_midlayer | 1 | 500 | gpt-5-mini | shapiro | self_reflection | 0.127 |  |
 | winter_warm_midlayer | 1 | 500 | gpt-5-mini | shapiro | voting | 0.806 |  |
 | winter_warm_midlayer | 1 | 500 | gpt-5-mini | shapiro | weighted_voting | 0.363 |  |
 | winter_warm_midlayer | 1 | 500 | gpt-5-mini | shapiro | zero_shot | 0.549 |  |
-| winter_warm_midlayer | 1 | 500 | gpt-5-mini | kruskal_wallis | ALL | 0.0014 |  |
+| winter_warm_midlayer | 1 | 500 | gpt-5-mini | kruskal_wallis | ALL | 0.000441 |  |
 | winter_warm_midlayer | 1 | 500 | gpt-5-mini | mannwhitneyu | borda vs cot_few_shot | 0.1 | False |
 | winter_warm_midlayer | 1 | 500 | gpt-5-mini | mannwhitneyu | borda vs fashionprompt | 0.0765 | False |
 | winter_warm_midlayer | 1 | 500 | gpt-5-mini | mannwhitneyu | borda vs few_shot | 0.1 | False |
 | winter_warm_midlayer | 1 | 500 | gpt-5-mini | mannwhitneyu | borda vs garmentagents_adaptive | 0.1 | False |
 | winter_warm_midlayer | 1 | 500 | gpt-5-mini | mannwhitneyu | borda vs garmentagents_fixed | 0.7 | False |
+| winter_warm_midlayer | 1 | 500 | gpt-5-mini | mannwhitneyu | borda vs nonllm_feasible_random | 0.1 | False |
+| winter_warm_midlayer | 1 | 500 | gpt-5-mini | mannwhitneyu | borda vs nonllm_simple_heuristic | 0.0636 | False |
 | winter_warm_midlayer | 1 | 500 | gpt-5-mini | mannwhitneyu | borda vs self_reflection | 0.1 | False |
 | winter_warm_midlayer | 1 | 500 | gpt-5-mini | mannwhitneyu | borda vs voting | 0.7 | False |
 | winter_warm_midlayer | 1 | 500 | gpt-5-mini | mannwhitneyu | borda vs weighted_voting | 0.7 | False |
@@ -844,6 +1005,8 @@
 | winter_warm_midlayer | 1 | 500 | gpt-5-mini | mannwhitneyu | cot_few_shot vs few_shot | 0.1 | False |
 | winter_warm_midlayer | 1 | 500 | gpt-5-mini | mannwhitneyu | cot_few_shot vs garmentagents_adaptive | 0.1 | False |
 | winter_warm_midlayer | 1 | 500 | gpt-5-mini | mannwhitneyu | cot_few_shot vs garmentagents_fixed | 0.1 | False |
+| winter_warm_midlayer | 1 | 500 | gpt-5-mini | mannwhitneyu | cot_few_shot vs nonllm_feasible_random | 0.1 | False |
+| winter_warm_midlayer | 1 | 500 | gpt-5-mini | mannwhitneyu | cot_few_shot vs nonllm_simple_heuristic | 0.0636 | False |
 | winter_warm_midlayer | 1 | 500 | gpt-5-mini | mannwhitneyu | cot_few_shot vs self_reflection | 0.1 | False |
 | winter_warm_midlayer | 1 | 500 | gpt-5-mini | mannwhitneyu | cot_few_shot vs voting | 0.1 | False |
 | winter_warm_midlayer | 1 | 500 | gpt-5-mini | mannwhitneyu | cot_few_shot vs weighted_voting | 0.1 | False |
@@ -851,25 +1014,42 @@
 | winter_warm_midlayer | 1 | 500 | gpt-5-mini | mannwhitneyu | fashionprompt vs few_shot | 0.0765 | False |
 | winter_warm_midlayer | 1 | 500 | gpt-5-mini | mannwhitneyu | fashionprompt vs garmentagents_adaptive | 0.0765 | False |
 | winter_warm_midlayer | 1 | 500 | gpt-5-mini | mannwhitneyu | fashionprompt vs garmentagents_fixed | 0.0765 | False |
+| winter_warm_midlayer | 1 | 500 | gpt-5-mini | mannwhitneyu | fashionprompt vs nonllm_feasible_random | 0.0765 | False |
+| winter_warm_midlayer | 1 | 500 | gpt-5-mini | mannwhitneyu | fashionprompt vs nonllm_simple_heuristic | 0.0593 | False |
 | winter_warm_midlayer | 1 | 500 | gpt-5-mini | mannwhitneyu | fashionprompt vs self_reflection | 1 | False |
 | winter_warm_midlayer | 1 | 500 | gpt-5-mini | mannwhitneyu | fashionprompt vs voting | 0.0765 | False |
 | winter_warm_midlayer | 1 | 500 | gpt-5-mini | mannwhitneyu | fashionprompt vs weighted_voting | 0.0765 | False |
 | winter_warm_midlayer | 1 | 500 | gpt-5-mini | mannwhitneyu | fashionprompt vs zero_shot | 0.0765 | False |
 | winter_warm_midlayer | 1 | 500 | gpt-5-mini | mannwhitneyu | few_shot vs garmentagents_adaptive | 0.1 | False |
 | winter_warm_midlayer | 1 | 500 | gpt-5-mini | mannwhitneyu | few_shot vs garmentagents_fixed | 0.1 | False |
+| winter_warm_midlayer | 1 | 500 | gpt-5-mini | mannwhitneyu | few_shot vs nonllm_feasible_random | 0.1 | False |
+| winter_warm_midlayer | 1 | 500 | gpt-5-mini | mannwhitneyu | few_shot vs nonllm_simple_heuristic | 0.0636 | False |
 | winter_warm_midlayer | 1 | 500 | gpt-5-mini | mannwhitneyu | few_shot vs self_reflection | 0.1 | False |
 | winter_warm_midlayer | 1 | 500 | gpt-5-mini | mannwhitneyu | few_shot vs voting | 0.1 | False |
 | winter_warm_midlayer | 1 | 500 | gpt-5-mini | mannwhitneyu | few_shot vs weighted_voting | 0.1 | False |
 | winter_warm_midlayer | 1 | 500 | gpt-5-mini | mannwhitneyu | few_shot vs zero_shot | 0.1 | False |
 | winter_warm_midlayer | 1 | 500 | gpt-5-mini | mannwhitneyu | garmentagents_adaptive vs garmentagents_fixed | 0.1 | False |
+| winter_warm_midlayer | 1 | 500 | gpt-5-mini | mannwhitneyu | garmentagents_adaptive vs nonllm_feasible_random | 0.825 | False |
+| winter_warm_midlayer | 1 | 500 | gpt-5-mini | mannwhitneyu | garmentagents_adaptive vs nonllm_simple_heuristic | 0.0636 | False |
 | winter_warm_midlayer | 1 | 500 | gpt-5-mini | mannwhitneyu | garmentagents_adaptive vs self_reflection | 0.1 | False |
 | winter_warm_midlayer | 1 | 500 | gpt-5-mini | mannwhitneyu | garmentagents_adaptive vs voting | 0.1 | False |
 | winter_warm_midlayer | 1 | 500 | gpt-5-mini | mannwhitneyu | garmentagents_adaptive vs weighted_voting | 0.1 | False |
 | winter_warm_midlayer | 1 | 500 | gpt-5-mini | mannwhitneyu | garmentagents_adaptive vs zero_shot | 0.1 | False |
+| winter_warm_midlayer | 1 | 500 | gpt-5-mini | mannwhitneyu | garmentagents_fixed vs nonllm_feasible_random | 0.1 | False |
+| winter_warm_midlayer | 1 | 500 | gpt-5-mini | mannwhitneyu | garmentagents_fixed vs nonllm_simple_heuristic | 0.0636 | False |
 | winter_warm_midlayer | 1 | 500 | gpt-5-mini | mannwhitneyu | garmentagents_fixed vs self_reflection | 0.1 | False |
 | winter_warm_midlayer | 1 | 500 | gpt-5-mini | mannwhitneyu | garmentagents_fixed vs voting | 1 | False |
 | winter_warm_midlayer | 1 | 500 | gpt-5-mini | mannwhitneyu | garmentagents_fixed vs weighted_voting | 0.7 | False |
 | winter_warm_midlayer | 1 | 500 | gpt-5-mini | mannwhitneyu | garmentagents_fixed vs zero_shot | 0.1 | False |
+| winter_warm_midlayer | 1 | 500 | gpt-5-mini | mannwhitneyu | nonllm_feasible_random vs nonllm_simple_heuristic | 0.0636 | False |
+| winter_warm_midlayer | 1 | 500 | gpt-5-mini | mannwhitneyu | nonllm_feasible_random vs self_reflection | 0.1 | False |
+| winter_warm_midlayer | 1 | 500 | gpt-5-mini | mannwhitneyu | nonllm_feasible_random vs voting | 0.1 | False |
+| winter_warm_midlayer | 1 | 500 | gpt-5-mini | mannwhitneyu | nonllm_feasible_random vs weighted_voting | 0.1 | False |
+| winter_warm_midlayer | 1 | 500 | gpt-5-mini | mannwhitneyu | nonllm_feasible_random vs zero_shot | 0.1 | False |
+| winter_warm_midlayer | 1 | 500 | gpt-5-mini | mannwhitneyu | nonllm_simple_heuristic vs self_reflection | 0.0636 | False |
+| winter_warm_midlayer | 1 | 500 | gpt-5-mini | mannwhitneyu | nonllm_simple_heuristic vs voting | 0.0636 | False |
+| winter_warm_midlayer | 1 | 500 | gpt-5-mini | mannwhitneyu | nonllm_simple_heuristic vs weighted_voting | 0.0636 | False |
+| winter_warm_midlayer | 1 | 500 | gpt-5-mini | mannwhitneyu | nonllm_simple_heuristic vs zero_shot | 0.0636 | False |
 | winter_warm_midlayer | 1 | 500 | gpt-5-mini | mannwhitneyu | self_reflection vs voting | 0.1 | False |
 | winter_warm_midlayer | 1 | 500 | gpt-5-mini | mannwhitneyu | self_reflection vs weighted_voting | 0.1 | False |
 | winter_warm_midlayer | 1 | 500 | gpt-5-mini | mannwhitneyu | self_reflection vs zero_shot | 0.1 | False |

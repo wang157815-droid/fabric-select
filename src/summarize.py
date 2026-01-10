@@ -228,6 +228,9 @@ def _ensure_strategy_order(strategies: List[str]) -> List[str]:
     给图/表一个稳定的策略顺序：把 garmentagents_* 放在最后（或按需要突出）。
     """
     known = [
+        # non-LLM baselines
+        "nonllm_feasible_random",
+        "nonllm_simple_heuristic",
         "zero_shot",
         "few_shot",
         "cot_few_shot",

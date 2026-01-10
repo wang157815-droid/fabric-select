@@ -1,6 +1,6 @@
 # 论文图片汇总（自动生成）
 
-- 生成时间：2026-01-10 15:37:13  
+- 生成时间：2026-01-10 18:35:19  
 - 脚本：`scripts/compile_paper_figures.py`
 
 说明：本文件引用的是本地 `outputs/figs*` 下的 PNG；如果在 GitHub 上看不到图片，这是因为 `outputs/` 默认被 `.gitignore` 忽略。
@@ -31,7 +31,7 @@
 <a id="fig-1-1"></a>
 
 - **文件**: `outputs/figs_main/acc_bar_outdoor_dwr_windbreaker__t1__n500__gpt-5-mini.png`
-- **大小**: 92.9 KB
+- **大小**: 105.3 KB
 - **说明**: acc bar outdoor dwr windbreaker / t1 / n500 / gpt-5-mini
 
 ![](outputs/figs_main/acc_bar_outdoor_dwr_windbreaker__t1__n500__gpt-5-mini.png)
@@ -41,7 +41,7 @@
 <a id="fig-1-2"></a>
 
 - **文件**: `outputs/figs_main/acc_bar_winter_warm_midlayer__t1__n500__gpt-5-mini.png`
-- **大小**: 91.9 KB
+- **大小**: 104.1 KB
 - **说明**: acc bar winter warm midlayer / t1 / n500 / gpt-5-mini
 
 ![](outputs/figs_main/acc_bar_winter_warm_midlayer__t1__n500__gpt-5-mini.png)
@@ -51,7 +51,7 @@
 <a id="fig-1-3"></a>
 
 - **文件**: `outputs/figs_main/acc_vs_latency_outdoor_dwr_windbreaker__t1__n500__gpt-5-mini.png`
-- **大小**: 79.7 KB
+- **大小**: 85.7 KB
 - **说明**: acc vs latency outdoor dwr windbreaker / t1 / n500 / gpt-5-mini
 
 ![](outputs/figs_main/acc_vs_latency_outdoor_dwr_windbreaker__t1__n500__gpt-5-mini.png)
@@ -61,7 +61,7 @@
 <a id="fig-1-4"></a>
 
 - **文件**: `outputs/figs_main/acc_vs_latency_winter_warm_midlayer__t1__n500__gpt-5-mini.png`
-- **大小**: 77.3 KB
+- **大小**: 85.0 KB
 - **说明**: acc vs latency winter warm midlayer / t1 / n500 / gpt-5-mini
 
 ![](outputs/figs_main/acc_vs_latency_winter_warm_midlayer__t1__n500__gpt-5-mini.png)
@@ -71,7 +71,7 @@
 <a id="fig-1-5"></a>
 
 - **文件**: `outputs/figs_main/acc_vs_tokens_outdoor_dwr_windbreaker__t1__n500__gpt-5-mini.png`
-- **大小**: 79.3 KB
+- **大小**: 86.5 KB
 - **说明**: acc vs tokens outdoor dwr windbreaker / t1 / n500 / gpt-5-mini
 
 ![](outputs/figs_main/acc_vs_tokens_outdoor_dwr_windbreaker__t1__n500__gpt-5-mini.png)
@@ -81,7 +81,7 @@
 <a id="fig-1-6"></a>
 
 - **文件**: `outputs/figs_main/acc_vs_tokens_winter_warm_midlayer__t1__n500__gpt-5-mini.png`
-- **大小**: 76.8 KB
+- **大小**: 85.8 KB
 - **说明**: acc vs tokens winter warm midlayer / t1 / n500 / gpt-5-mini
 
 ![](outputs/figs_main/acc_vs_tokens_winter_warm_midlayer__t1__n500__gpt-5-mini.png)
@@ -91,7 +91,7 @@
 <a id="fig-1-7"></a>
 
 - **文件**: `outputs/figs_main/paper_acc_grouped_by_scenario_questions_path-data_questions_v1_clean.jsonl__t1__n500__gpt-5-mini.png`
-- **大小**: 117.8 KB
+- **大小**: 129.9 KB
 - **说明**: paper acc grouped by scenario questions path-data questions v1 clean.jsonl / t1 / n500 / gpt-5-mini
 
 ![](outputs/figs_main/paper_acc_grouped_by_scenario_questions_path-data_questions_v1_clean.jsonl__t1__n500__gpt-5-mini.png)
@@ -121,7 +121,7 @@
 <a id="fig-1-10"></a>
 
 - **文件**: `outputs/figs_main/paper_heatmap_constraint_outdoor_dwr_windbreaker.png`
-- **大小**: 124.4 KB
+- **大小**: 140.6 KB
 - **说明**: paper heatmap constraint outdoor dwr windbreaker
 
 ![](outputs/figs_main/paper_heatmap_constraint_outdoor_dwr_windbreaker.png)
@@ -131,7 +131,7 @@
 <a id="fig-1-11"></a>
 
 - **文件**: `outputs/figs_main/paper_heatmap_constraint_winter_warm_midlayer.png`
-- **大小**: 125.4 KB
+- **大小**: 142.7 KB
 - **说明**: paper heatmap constraint winter warm midlayer
 
 ![](outputs/figs_main/paper_heatmap_constraint_winter_warm_midlayer.png)
@@ -141,7 +141,7 @@
 <a id="fig-1-12"></a>
 
 - **文件**: `outputs/figs_main/paper_heatmap_difficulty_outdoor_dwr_windbreaker.png`
-- **大小**: 106.0 KB
+- **大小**: 118.7 KB
 - **说明**: paper heatmap difficulty outdoor dwr windbreaker
 
 ![](outputs/figs_main/paper_heatmap_difficulty_outdoor_dwr_windbreaker.png)
@@ -151,7 +151,7 @@
 <a id="fig-1-13"></a>
 
 - **文件**: `outputs/figs_main/paper_heatmap_difficulty_winter_warm_midlayer.png`
-- **大小**: 107.1 KB
+- **大小**: 119.8 KB
 - **说明**: paper heatmap difficulty winter warm midlayer
 
 ![](outputs/figs_main/paper_heatmap_difficulty_winter_warm_midlayer.png)
@@ -161,7 +161,7 @@
 <a id="fig-1-14"></a>
 
 - **文件**: `outputs/figs_main/paper_llm_error_rate_questions_path-data_questions_v1_clean.jsonl__t1__n500__gpt-5-mini.png`
-- **大小**: 93.1 KB
+- **大小**: 104.8 KB
 - **说明**: paper llm error rate questions path-data questions v1 clean.jsonl / t1 / n500 / gpt-5-mini
 
 ![](outputs/figs_main/paper_llm_error_rate_questions_path-data_questions_v1_clean.jsonl__t1__n500__gpt-5-mini.png)
@@ -171,7 +171,7 @@
 <a id="fig-1-15"></a>
 
 - **文件**: `outputs/figs_main/paper_tradeoff_bubble_questions_path-data_questions_v1_clean.jsonl__t1__n500__gpt-5-mini.png`
-- **大小**: 91.4 KB
+- **大小**: 100.4 KB
 - **说明**: paper tradeoff bubble questions path-data questions v1 clean.jsonl / t1 / n500 / gpt-5-mini
 
 ![](outputs/figs_main/paper_tradeoff_bubble_questions_path-data_questions_v1_clean.jsonl__t1__n500__gpt-5-mini.png)
@@ -181,7 +181,7 @@
 <a id="fig-1-16"></a>
 
 - **文件**: `outputs/figs_main/paper_valid_output_rate_questions_path-data_questions_v1_clean.jsonl__t1__n500__gpt-5-mini.png`
-- **大小**: 96.4 KB
+- **大小**: 108.2 KB
 - **说明**: paper valid output rate questions path-data questions v1 clean.jsonl / t1 / n500 / gpt-5-mini
 
 ![](outputs/figs_main/paper_valid_output_rate_questions_path-data_questions_v1_clean.jsonl__t1__n500__gpt-5-mini.png)
