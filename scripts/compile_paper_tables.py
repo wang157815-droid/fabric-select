@@ -9,7 +9,7 @@
 - outputs/figs_ablation/ablation_report.md
 
 输出：
-- outputs/paper_tables.md
+- PAPER_TABLES.md（默认放在仓库根目录，方便被 Git 跟踪；`outputs/` 默认被 .gitignore 忽略）
 """
 
 from __future__ import annotations
@@ -156,7 +156,7 @@ def _table_section_csv(
 def main(
     main_dir: Path = typer.Option(Path("outputs/figs_main"), help="主实验表格目录（figs_main）"),
     ablation_dir: Path = typer.Option(Path("outputs/figs_ablation"), help="消融表格目录（figs_ablation）"),
-    out_md: Path = typer.Option(Path("outputs/paper_tables.md"), help="输出 Markdown 文件"),
+    out_md: Path = typer.Option(Path("PAPER_TABLES.md"), help="输出 Markdown 文件"),
 ) -> None:
     pieces: List[str] = []
     pieces.append("# 论文表格汇总（自动生成）\n")
