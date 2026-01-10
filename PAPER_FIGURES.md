@@ -1,6 +1,6 @@
 # 论文图片汇总（自动生成）
 
-- 生成时间：2026-01-10 18:35:19  
+- 生成时间：2026-01-11 02:48:25  
 - 脚本：`scripts/compile_paper_figures.py`
 
 说明：本文件引用的是本地 `outputs/figs*` 下的 PNG；如果在 GitHub 上看不到图片，这是因为 `outputs/` 默认被 `.gitignore` 忽略。
@@ -291,46 +291,222 @@
 ![](outputs/figs_ablation/ablation_d1_clean_vs_ambiguous.png)
 
 <details>
-<summary>Main Aux (figs_main_*)（30 张）</summary>
+<summary>Main Aux (figs_main_*)（46 张）</summary>
 
 ## Main Aux (figs_main_*)
 
 ### 目录
 
-- [Fig.S-1](#fig-s-1) - acc bar outdoor dwr windbreaker / t1 / n500 / gpt-5-mini
-- [Fig.S-2](#fig-s-2) - acc vs latency outdoor dwr windbreaker / t1 / n500 / gpt-5-mini
-- [Fig.S-3](#fig-s-3) - acc vs tokens outdoor dwr windbreaker / t1 / n500 / gpt-5-mini
-- [Fig.S-4](#fig-s-4) - acc bar outdoor dwr windbreaker / t1 / n500 / gpt-5-mini
-- [Fig.S-5](#fig-s-5) - acc vs latency outdoor dwr windbreaker / t1 / n500 / gpt-5-mini
-- [Fig.S-6](#fig-s-6) - acc vs tokens outdoor dwr windbreaker / t1 / n500 / gpt-5-mini
-- [Fig.S-7](#fig-s-7) - paper dataset margin hist
-- [Fig.S-8](#fig-s-8) - paper dataset must count
-- [Fig.S-9](#fig-s-9) - paper heatmap constraint outdoor dwr windbreaker
-- [Fig.S-10](#fig-s-10) - paper heatmap difficulty outdoor dwr windbreaker
-- [Fig.S-11](#fig-s-11) - paper llm error rate questions path-data questions v1 clean.jsonl / t1 / n500 / gpt-5-mini
-- [Fig.S-12](#fig-s-12) - paper tradeoff bubble questions path-data questions v1 clean.jsonl / t1 / n500 / gpt-5-mini
-- [Fig.S-13](#fig-s-13) - paper valid output rate questions path-data questions v1 clean.jsonl / t1 / n500 / gpt-5-mini
-- [Fig.S-14](#fig-s-14) - acc bar outdoor dwr windbreaker / t1 / n500 / gpt-5-mini
-- [Fig.S-15](#fig-s-15) - acc vs latency outdoor dwr windbreaker / t1 / n500 / gpt-5-mini
-- [Fig.S-16](#fig-s-16) - acc vs tokens outdoor dwr windbreaker / t1 / n500 / gpt-5-mini
-- [Fig.S-17](#fig-s-17) - paper dataset margin hist
-- [Fig.S-18](#fig-s-18) - paper dataset must count
-- [Fig.S-19](#fig-s-19) - paper heatmap difficulty outdoor dwr windbreaker
-- [Fig.S-20](#fig-s-20) - paper tradeoff bubble questions path-data questions v1 clean.jsonl / t1 / n500 / gpt-5-mini
-- [Fig.S-21](#fig-s-21) - acc bar outdoor dwr windbreaker / t1 / n500 / gpt-5-mini
-- [Fig.S-22](#fig-s-22) - acc vs latency outdoor dwr windbreaker / t1 / n500 / gpt-5-mini
-- [Fig.S-23](#fig-s-23) - acc vs tokens outdoor dwr windbreaker / t1 / n500 / gpt-5-mini
-- [Fig.S-24](#fig-s-24) - paper dataset margin hist
-- [Fig.S-25](#fig-s-25) - paper dataset must count
-- [Fig.S-26](#fig-s-26) - paper heatmap constraint outdoor dwr windbreaker
-- [Fig.S-27](#fig-s-27) - paper heatmap difficulty outdoor dwr windbreaker
-- [Fig.S-28](#fig-s-28) - paper llm error rate questions path-data questions v1 clean.jsonl / t1 / n500 / gpt-5-mini
-- [Fig.S-29](#fig-s-29) - paper tradeoff bubble questions path-data questions v1 clean.jsonl / t1 / n500 / gpt-5-mini
-- [Fig.S-30](#fig-s-30) - paper valid output rate questions path-data questions v1 clean.jsonl / t1 / n500 / gpt-5-mini
+- [Fig.S-1](#fig-s-1) - acc bar outdoor dwr windbreaker / t1 / n100 / gpt-5
+- [Fig.S-2](#fig-s-2) - acc bar winter warm midlayer / t1 / n100 / gpt-5
+- [Fig.S-3](#fig-s-3) - acc vs latency outdoor dwr windbreaker / t1 / n100 / gpt-5
+- [Fig.S-4](#fig-s-4) - acc vs latency winter warm midlayer / t1 / n100 / gpt-5
+- [Fig.S-5](#fig-s-5) - acc vs tokens outdoor dwr windbreaker / t1 / n100 / gpt-5
+- [Fig.S-6](#fig-s-6) - acc vs tokens winter warm midlayer / t1 / n100 / gpt-5
+- [Fig.S-7](#fig-s-7) - paper acc grouped by scenario questions path-data questions v1 clean.jsonl / t1 / n100 / gpt-5
+- [Fig.S-8](#fig-s-8) - paper dataset margin hist
+- [Fig.S-9](#fig-s-9) - paper dataset must count
+- [Fig.S-10](#fig-s-10) - paper heatmap constraint outdoor dwr windbreaker
+- [Fig.S-11](#fig-s-11) - paper heatmap constraint winter warm midlayer
+- [Fig.S-12](#fig-s-12) - paper heatmap difficulty outdoor dwr windbreaker
+- [Fig.S-13](#fig-s-13) - paper heatmap difficulty winter warm midlayer
+- [Fig.S-14](#fig-s-14) - paper llm error rate questions path-data questions v1 clean.jsonl / t1 / n100 / gpt-5
+- [Fig.S-15](#fig-s-15) - paper tradeoff bubble questions path-data questions v1 clean.jsonl / t1 / n100 / gpt-5
+- [Fig.S-16](#fig-s-16) - paper valid output rate questions path-data questions v1 clean.jsonl / t1 / n100 / gpt-5
+- [Fig.S-17](#fig-s-17) - acc bar outdoor dwr windbreaker / t1 / n500 / gpt-5-mini
+- [Fig.S-18](#fig-s-18) - acc vs latency outdoor dwr windbreaker / t1 / n500 / gpt-5-mini
+- [Fig.S-19](#fig-s-19) - acc vs tokens outdoor dwr windbreaker / t1 / n500 / gpt-5-mini
+- [Fig.S-20](#fig-s-20) - acc bar outdoor dwr windbreaker / t1 / n500 / gpt-5-mini
+- [Fig.S-21](#fig-s-21) - acc vs latency outdoor dwr windbreaker / t1 / n500 / gpt-5-mini
+- [Fig.S-22](#fig-s-22) - acc vs tokens outdoor dwr windbreaker / t1 / n500 / gpt-5-mini
+- [Fig.S-23](#fig-s-23) - paper dataset margin hist
+- [Fig.S-24](#fig-s-24) - paper dataset must count
+- [Fig.S-25](#fig-s-25) - paper heatmap constraint outdoor dwr windbreaker
+- [Fig.S-26](#fig-s-26) - paper heatmap difficulty outdoor dwr windbreaker
+- [Fig.S-27](#fig-s-27) - paper llm error rate questions path-data questions v1 clean.jsonl / t1 / n500 / gpt-5-mini
+- [Fig.S-28](#fig-s-28) - paper tradeoff bubble questions path-data questions v1 clean.jsonl / t1 / n500 / gpt-5-mini
+- [Fig.S-29](#fig-s-29) - paper valid output rate questions path-data questions v1 clean.jsonl / t1 / n500 / gpt-5-mini
+- [Fig.S-30](#fig-s-30) - acc bar outdoor dwr windbreaker / t1 / n500 / gpt-5-mini
+- [Fig.S-31](#fig-s-31) - acc vs latency outdoor dwr windbreaker / t1 / n500 / gpt-5-mini
+- [Fig.S-32](#fig-s-32) - acc vs tokens outdoor dwr windbreaker / t1 / n500 / gpt-5-mini
+- [Fig.S-33](#fig-s-33) - paper dataset margin hist
+- [Fig.S-34](#fig-s-34) - paper dataset must count
+- [Fig.S-35](#fig-s-35) - paper heatmap difficulty outdoor dwr windbreaker
+- [Fig.S-36](#fig-s-36) - paper tradeoff bubble questions path-data questions v1 clean.jsonl / t1 / n500 / gpt-5-mini
+- [Fig.S-37](#fig-s-37) - acc bar outdoor dwr windbreaker / t1 / n500 / gpt-5-mini
+- [Fig.S-38](#fig-s-38) - acc vs latency outdoor dwr windbreaker / t1 / n500 / gpt-5-mini
+- [Fig.S-39](#fig-s-39) - acc vs tokens outdoor dwr windbreaker / t1 / n500 / gpt-5-mini
+- [Fig.S-40](#fig-s-40) - paper dataset margin hist
+- [Fig.S-41](#fig-s-41) - paper dataset must count
+- [Fig.S-42](#fig-s-42) - paper heatmap constraint outdoor dwr windbreaker
+- [Fig.S-43](#fig-s-43) - paper heatmap difficulty outdoor dwr windbreaker
+- [Fig.S-44](#fig-s-44) - paper llm error rate questions path-data questions v1 clean.jsonl / t1 / n500 / gpt-5-mini
+- [Fig.S-45](#fig-s-45) - paper tradeoff bubble questions path-data questions v1 clean.jsonl / t1 / n500 / gpt-5-mini
+- [Fig.S-46](#fig-s-46) - paper valid output rate questions path-data questions v1 clean.jsonl / t1 / n500 / gpt-5-mini
 
 ### Fig.S-1
 
 <a id="fig-s-1"></a>
+
+- **文件**: `outputs/figs_main_gpt5_sanity/acc_bar_outdoor_dwr_windbreaker__t1__n100__gpt-5.png`
+- **大小**: 61.3 KB
+- **说明**: acc bar outdoor dwr windbreaker / t1 / n100 / gpt-5
+
+![](outputs/figs_main_gpt5_sanity/acc_bar_outdoor_dwr_windbreaker__t1__n100__gpt-5.png)
+
+### Fig.S-2
+
+<a id="fig-s-2"></a>
+
+- **文件**: `outputs/figs_main_gpt5_sanity/acc_bar_winter_warm_midlayer__t1__n100__gpt-5.png`
+- **大小**: 60.2 KB
+- **说明**: acc bar winter warm midlayer / t1 / n100 / gpt-5
+
+![](outputs/figs_main_gpt5_sanity/acc_bar_winter_warm_midlayer__t1__n100__gpt-5.png)
+
+### Fig.S-3
+
+<a id="fig-s-3"></a>
+
+- **文件**: `outputs/figs_main_gpt5_sanity/acc_vs_latency_outdoor_dwr_windbreaker__t1__n100__gpt-5.png`
+- **大小**: 61.7 KB
+- **说明**: acc vs latency outdoor dwr windbreaker / t1 / n100 / gpt-5
+
+![](outputs/figs_main_gpt5_sanity/acc_vs_latency_outdoor_dwr_windbreaker__t1__n100__gpt-5.png)
+
+### Fig.S-4
+
+<a id="fig-s-4"></a>
+
+- **文件**: `outputs/figs_main_gpt5_sanity/acc_vs_latency_winter_warm_midlayer__t1__n100__gpt-5.png`
+- **大小**: 59.5 KB
+- **说明**: acc vs latency winter warm midlayer / t1 / n100 / gpt-5
+
+![](outputs/figs_main_gpt5_sanity/acc_vs_latency_winter_warm_midlayer__t1__n100__gpt-5.png)
+
+### Fig.S-5
+
+<a id="fig-s-5"></a>
+
+- **文件**: `outputs/figs_main_gpt5_sanity/acc_vs_tokens_outdoor_dwr_windbreaker__t1__n100__gpt-5.png`
+- **大小**: 61.3 KB
+- **说明**: acc vs tokens outdoor dwr windbreaker / t1 / n100 / gpt-5
+
+![](outputs/figs_main_gpt5_sanity/acc_vs_tokens_outdoor_dwr_windbreaker__t1__n100__gpt-5.png)
+
+### Fig.S-6
+
+<a id="fig-s-6"></a>
+
+- **文件**: `outputs/figs_main_gpt5_sanity/acc_vs_tokens_winter_warm_midlayer__t1__n100__gpt-5.png`
+- **大小**: 60.4 KB
+- **说明**: acc vs tokens winter warm midlayer / t1 / n100 / gpt-5
+
+![](outputs/figs_main_gpt5_sanity/acc_vs_tokens_winter_warm_midlayer__t1__n100__gpt-5.png)
+
+### Fig.S-7
+
+<a id="fig-s-7"></a>
+
+- **文件**: `outputs/figs_main_gpt5_sanity/paper_acc_grouped_by_scenario_questions_path-data_questions_v1_clean.jsonl__t1__n100__gpt-5.png`
+- **大小**: 82.1 KB
+- **说明**: paper acc grouped by scenario questions path-data questions v1 clean.jsonl / t1 / n100 / gpt-5
+
+![](outputs/figs_main_gpt5_sanity/paper_acc_grouped_by_scenario_questions_path-data_questions_v1_clean.jsonl__t1__n100__gpt-5.png)
+
+### Fig.S-8
+
+<a id="fig-s-8"></a>
+
+- **文件**: `outputs/figs_main_gpt5_sanity/paper_dataset_margin_hist.png`
+- **大小**: 47.8 KB
+- **说明**: paper dataset margin hist
+
+![](outputs/figs_main_gpt5_sanity/paper_dataset_margin_hist.png)
+
+### Fig.S-9
+
+<a id="fig-s-9"></a>
+
+- **文件**: `outputs/figs_main_gpt5_sanity/paper_dataset_must_count.png`
+- **大小**: 67.2 KB
+- **说明**: paper dataset must count
+
+![](outputs/figs_main_gpt5_sanity/paper_dataset_must_count.png)
+
+### Fig.S-10
+
+<a id="fig-s-10"></a>
+
+- **文件**: `outputs/figs_main_gpt5_sanity/paper_heatmap_constraint_outdoor_dwr_windbreaker.png`
+- **大小**: 76.2 KB
+- **说明**: paper heatmap constraint outdoor dwr windbreaker
+
+![](outputs/figs_main_gpt5_sanity/paper_heatmap_constraint_outdoor_dwr_windbreaker.png)
+
+### Fig.S-11
+
+<a id="fig-s-11"></a>
+
+- **文件**: `outputs/figs_main_gpt5_sanity/paper_heatmap_constraint_winter_warm_midlayer.png`
+- **大小**: 74.1 KB
+- **说明**: paper heatmap constraint winter warm midlayer
+
+![](outputs/figs_main_gpt5_sanity/paper_heatmap_constraint_winter_warm_midlayer.png)
+
+### Fig.S-12
+
+<a id="fig-s-12"></a>
+
+- **文件**: `outputs/figs_main_gpt5_sanity/paper_heatmap_difficulty_outdoor_dwr_windbreaker.png`
+- **大小**: 66.3 KB
+- **说明**: paper heatmap difficulty outdoor dwr windbreaker
+
+![](outputs/figs_main_gpt5_sanity/paper_heatmap_difficulty_outdoor_dwr_windbreaker.png)
+
+### Fig.S-13
+
+<a id="fig-s-13"></a>
+
+- **文件**: `outputs/figs_main_gpt5_sanity/paper_heatmap_difficulty_winter_warm_midlayer.png`
+- **大小**: 63.9 KB
+- **说明**: paper heatmap difficulty winter warm midlayer
+
+![](outputs/figs_main_gpt5_sanity/paper_heatmap_difficulty_winter_warm_midlayer.png)
+
+### Fig.S-14
+
+<a id="fig-s-14"></a>
+
+- **文件**: `outputs/figs_main_gpt5_sanity/paper_llm_error_rate_questions_path-data_questions_v1_clean.jsonl__t1__n100__gpt-5.png`
+- **大小**: 67.2 KB
+- **说明**: paper llm error rate questions path-data questions v1 clean.jsonl / t1 / n100 / gpt-5
+
+![](outputs/figs_main_gpt5_sanity/paper_llm_error_rate_questions_path-data_questions_v1_clean.jsonl__t1__n100__gpt-5.png)
+
+### Fig.S-15
+
+<a id="fig-s-15"></a>
+
+- **文件**: `outputs/figs_main_gpt5_sanity/paper_tradeoff_bubble_questions_path-data_questions_v1_clean.jsonl__t1__n100__gpt-5.png`
+- **大小**: 71.0 KB
+- **说明**: paper tradeoff bubble questions path-data questions v1 clean.jsonl / t1 / n100 / gpt-5
+
+![](outputs/figs_main_gpt5_sanity/paper_tradeoff_bubble_questions_path-data_questions_v1_clean.jsonl__t1__n100__gpt-5.png)
+
+### Fig.S-16
+
+<a id="fig-s-16"></a>
+
+- **文件**: `outputs/figs_main_gpt5_sanity/paper_valid_output_rate_questions_path-data_questions_v1_clean.jsonl__t1__n100__gpt-5.png`
+- **大小**: 65.2 KB
+- **说明**: paper valid output rate questions path-data questions v1 clean.jsonl / t1 / n100 / gpt-5
+
+![](outputs/figs_main_gpt5_sanity/paper_valid_output_rate_questions_path-data_questions_v1_clean.jsonl__t1__n100__gpt-5.png)
+
+### Fig.S-17
+
+<a id="fig-s-17"></a>
 
 - **文件**: `outputs/figs_main_partial/acc_bar_outdoor_dwr_windbreaker__t1__n500__gpt-5-mini.png`
 - **大小**: 45.8 KB
@@ -338,9 +514,9 @@
 
 ![](outputs/figs_main_partial/acc_bar_outdoor_dwr_windbreaker__t1__n500__gpt-5-mini.png)
 
-### Fig.S-2
+### Fig.S-18
 
-<a id="fig-s-2"></a>
+<a id="fig-s-18"></a>
 
 - **文件**: `outputs/figs_main_partial/acc_vs_latency_outdoor_dwr_windbreaker__t1__n500__gpt-5-mini.png`
 - **大小**: 49.7 KB
@@ -348,9 +524,9 @@
 
 ![](outputs/figs_main_partial/acc_vs_latency_outdoor_dwr_windbreaker__t1__n500__gpt-5-mini.png)
 
-### Fig.S-3
+### Fig.S-19
 
-<a id="fig-s-3"></a>
+<a id="fig-s-19"></a>
 
 - **文件**: `outputs/figs_main_partial/acc_vs_tokens_outdoor_dwr_windbreaker__t1__n500__gpt-5-mini.png`
 - **大小**: 50.8 KB
@@ -358,9 +534,9 @@
 
 ![](outputs/figs_main_partial/acc_vs_tokens_outdoor_dwr_windbreaker__t1__n500__gpt-5-mini.png)
 
-### Fig.S-4
+### Fig.S-20
 
-<a id="fig-s-4"></a>
+<a id="fig-s-20"></a>
 
 - **文件**: `outputs/figs_main_ps1_test/acc_bar_outdoor_dwr_windbreaker__t1__n500__gpt-5-mini.png`
 - **大小**: 59.1 KB
@@ -368,9 +544,9 @@
 
 ![](outputs/figs_main_ps1_test/acc_bar_outdoor_dwr_windbreaker__t1__n500__gpt-5-mini.png)
 
-### Fig.S-5
+### Fig.S-21
 
-<a id="fig-s-5"></a>
+<a id="fig-s-21"></a>
 
 - **文件**: `outputs/figs_main_ps1_test/acc_vs_latency_outdoor_dwr_windbreaker__t1__n500__gpt-5-mini.png`
 - **大小**: 55.7 KB
@@ -378,9 +554,9 @@
 
 ![](outputs/figs_main_ps1_test/acc_vs_latency_outdoor_dwr_windbreaker__t1__n500__gpt-5-mini.png)
 
-### Fig.S-6
+### Fig.S-22
 
-<a id="fig-s-6"></a>
+<a id="fig-s-22"></a>
 
 - **文件**: `outputs/figs_main_ps1_test/acc_vs_tokens_outdoor_dwr_windbreaker__t1__n500__gpt-5-mini.png`
 - **大小**: 57.8 KB
@@ -388,9 +564,9 @@
 
 ![](outputs/figs_main_ps1_test/acc_vs_tokens_outdoor_dwr_windbreaker__t1__n500__gpt-5-mini.png)
 
-### Fig.S-7
+### Fig.S-23
 
-<a id="fig-s-7"></a>
+<a id="fig-s-23"></a>
 
 - **文件**: `outputs/figs_main_ps1_test/paper_dataset_margin_hist.png`
 - **大小**: 47.8 KB
@@ -398,9 +574,9 @@
 
 ![](outputs/figs_main_ps1_test/paper_dataset_margin_hist.png)
 
-### Fig.S-8
+### Fig.S-24
 
-<a id="fig-s-8"></a>
+<a id="fig-s-24"></a>
 
 - **文件**: `outputs/figs_main_ps1_test/paper_dataset_must_count.png`
 - **大小**: 67.2 KB
@@ -408,9 +584,9 @@
 
 ![](outputs/figs_main_ps1_test/paper_dataset_must_count.png)
 
-### Fig.S-9
+### Fig.S-25
 
-<a id="fig-s-9"></a>
+<a id="fig-s-25"></a>
 
 - **文件**: `outputs/figs_main_ps1_test/paper_heatmap_constraint_outdoor_dwr_windbreaker.png`
 - **大小**: 79.0 KB
@@ -418,9 +594,9 @@
 
 ![](outputs/figs_main_ps1_test/paper_heatmap_constraint_outdoor_dwr_windbreaker.png)
 
-### Fig.S-10
+### Fig.S-26
 
-<a id="fig-s-10"></a>
+<a id="fig-s-26"></a>
 
 - **文件**: `outputs/figs_main_ps1_test/paper_heatmap_difficulty_outdoor_dwr_windbreaker.png`
 - **大小**: 69.0 KB
@@ -428,9 +604,9 @@
 
 ![](outputs/figs_main_ps1_test/paper_heatmap_difficulty_outdoor_dwr_windbreaker.png)
 
-### Fig.S-11
+### Fig.S-27
 
-<a id="fig-s-11"></a>
+<a id="fig-s-27"></a>
 
 - **文件**: `outputs/figs_main_ps1_test/paper_llm_error_rate_questions_path-data_questions_v1_clean.jsonl__t1__n500__gpt-5-mini.png`
 - **大小**: 64.3 KB
@@ -438,9 +614,9 @@
 
 ![](outputs/figs_main_ps1_test/paper_llm_error_rate_questions_path-data_questions_v1_clean.jsonl__t1__n500__gpt-5-mini.png)
 
-### Fig.S-12
+### Fig.S-28
 
-<a id="fig-s-12"></a>
+<a id="fig-s-28"></a>
 
 - **文件**: `outputs/figs_main_ps1_test/paper_tradeoff_bubble_questions_path-data_questions_v1_clean.jsonl__t1__n500__gpt-5-mini.png`
 - **大小**: 68.4 KB
@@ -448,9 +624,9 @@
 
 ![](outputs/figs_main_ps1_test/paper_tradeoff_bubble_questions_path-data_questions_v1_clean.jsonl__t1__n500__gpt-5-mini.png)
 
-### Fig.S-13
+### Fig.S-29
 
-<a id="fig-s-13"></a>
+<a id="fig-s-29"></a>
 
 - **文件**: `outputs/figs_main_ps1_test/paper_valid_output_rate_questions_path-data_questions_v1_clean.jsonl__t1__n500__gpt-5-mini.png`
 - **大小**: 63.1 KB
@@ -458,9 +634,9 @@
 
 ![](outputs/figs_main_ps1_test/paper_valid_output_rate_questions_path-data_questions_v1_clean.jsonl__t1__n500__gpt-5-mini.png)
 
-### Fig.S-14
+### Fig.S-30
 
-<a id="fig-s-14"></a>
+<a id="fig-s-30"></a>
 
 - **文件**: `outputs/figs_main_tmp/acc_bar_outdoor_dwr_windbreaker__t1__n500__gpt-5-mini.png`
 - **大小**: 59.1 KB
@@ -468,9 +644,9 @@
 
 ![](outputs/figs_main_tmp/acc_bar_outdoor_dwr_windbreaker__t1__n500__gpt-5-mini.png)
 
-### Fig.S-15
+### Fig.S-31
 
-<a id="fig-s-15"></a>
+<a id="fig-s-31"></a>
 
 - **文件**: `outputs/figs_main_tmp/acc_vs_latency_outdoor_dwr_windbreaker__t1__n500__gpt-5-mini.png`
 - **大小**: 55.7 KB
@@ -478,9 +654,9 @@
 
 ![](outputs/figs_main_tmp/acc_vs_latency_outdoor_dwr_windbreaker__t1__n500__gpt-5-mini.png)
 
-### Fig.S-16
+### Fig.S-32
 
-<a id="fig-s-16"></a>
+<a id="fig-s-32"></a>
 
 - **文件**: `outputs/figs_main_tmp/acc_vs_tokens_outdoor_dwr_windbreaker__t1__n500__gpt-5-mini.png`
 - **大小**: 57.8 KB
@@ -488,9 +664,9 @@
 
 ![](outputs/figs_main_tmp/acc_vs_tokens_outdoor_dwr_windbreaker__t1__n500__gpt-5-mini.png)
 
-### Fig.S-17
+### Fig.S-33
 
-<a id="fig-s-17"></a>
+<a id="fig-s-33"></a>
 
 - **文件**: `outputs/figs_main_tmp/paper_dataset_margin_hist.png`
 - **大小**: 47.8 KB
@@ -498,9 +674,9 @@
 
 ![](outputs/figs_main_tmp/paper_dataset_margin_hist.png)
 
-### Fig.S-18
+### Fig.S-34
 
-<a id="fig-s-18"></a>
+<a id="fig-s-34"></a>
 
 - **文件**: `outputs/figs_main_tmp/paper_dataset_must_count.png`
 - **大小**: 67.2 KB
@@ -508,9 +684,9 @@
 
 ![](outputs/figs_main_tmp/paper_dataset_must_count.png)
 
-### Fig.S-19
+### Fig.S-35
 
-<a id="fig-s-19"></a>
+<a id="fig-s-35"></a>
 
 - **文件**: `outputs/figs_main_tmp/paper_heatmap_difficulty_outdoor_dwr_windbreaker.png`
 - **大小**: 68.7 KB
@@ -518,9 +694,9 @@
 
 ![](outputs/figs_main_tmp/paper_heatmap_difficulty_outdoor_dwr_windbreaker.png)
 
-### Fig.S-20
+### Fig.S-36
 
-<a id="fig-s-20"></a>
+<a id="fig-s-36"></a>
 
 - **文件**: `outputs/figs_main_tmp/paper_tradeoff_bubble_questions_path-data_questions_v1_clean.jsonl__t1__n500__gpt-5-mini.png`
 - **大小**: 68.4 KB
@@ -528,9 +704,9 @@
 
 ![](outputs/figs_main_tmp/paper_tradeoff_bubble_questions_path-data_questions_v1_clean.jsonl__t1__n500__gpt-5-mini.png)
 
-### Fig.S-21
+### Fig.S-37
 
-<a id="fig-s-21"></a>
+<a id="fig-s-37"></a>
 
 - **文件**: `outputs/figs_main_tmp2/acc_bar_outdoor_dwr_windbreaker__t1__n500__gpt-5-mini.png`
 - **大小**: 59.1 KB
@@ -538,9 +714,9 @@
 
 ![](outputs/figs_main_tmp2/acc_bar_outdoor_dwr_windbreaker__t1__n500__gpt-5-mini.png)
 
-### Fig.S-22
+### Fig.S-38
 
-<a id="fig-s-22"></a>
+<a id="fig-s-38"></a>
 
 - **文件**: `outputs/figs_main_tmp2/acc_vs_latency_outdoor_dwr_windbreaker__t1__n500__gpt-5-mini.png`
 - **大小**: 55.7 KB
@@ -548,9 +724,9 @@
 
 ![](outputs/figs_main_tmp2/acc_vs_latency_outdoor_dwr_windbreaker__t1__n500__gpt-5-mini.png)
 
-### Fig.S-23
+### Fig.S-39
 
-<a id="fig-s-23"></a>
+<a id="fig-s-39"></a>
 
 - **文件**: `outputs/figs_main_tmp2/acc_vs_tokens_outdoor_dwr_windbreaker__t1__n500__gpt-5-mini.png`
 - **大小**: 57.8 KB
@@ -558,9 +734,9 @@
 
 ![](outputs/figs_main_tmp2/acc_vs_tokens_outdoor_dwr_windbreaker__t1__n500__gpt-5-mini.png)
 
-### Fig.S-24
+### Fig.S-40
 
-<a id="fig-s-24"></a>
+<a id="fig-s-40"></a>
 
 - **文件**: `outputs/figs_main_tmp2/paper_dataset_margin_hist.png`
 - **大小**: 47.8 KB
@@ -568,9 +744,9 @@
 
 ![](outputs/figs_main_tmp2/paper_dataset_margin_hist.png)
 
-### Fig.S-25
+### Fig.S-41
 
-<a id="fig-s-25"></a>
+<a id="fig-s-41"></a>
 
 - **文件**: `outputs/figs_main_tmp2/paper_dataset_must_count.png`
 - **大小**: 67.2 KB
@@ -578,9 +754,9 @@
 
 ![](outputs/figs_main_tmp2/paper_dataset_must_count.png)
 
-### Fig.S-26
+### Fig.S-42
 
-<a id="fig-s-26"></a>
+<a id="fig-s-42"></a>
 
 - **文件**: `outputs/figs_main_tmp2/paper_heatmap_constraint_outdoor_dwr_windbreaker.png`
 - **大小**: 79.0 KB
@@ -588,9 +764,9 @@
 
 ![](outputs/figs_main_tmp2/paper_heatmap_constraint_outdoor_dwr_windbreaker.png)
 
-### Fig.S-27
+### Fig.S-43
 
-<a id="fig-s-27"></a>
+<a id="fig-s-43"></a>
 
 - **文件**: `outputs/figs_main_tmp2/paper_heatmap_difficulty_outdoor_dwr_windbreaker.png`
 - **大小**: 69.0 KB
@@ -598,9 +774,9 @@
 
 ![](outputs/figs_main_tmp2/paper_heatmap_difficulty_outdoor_dwr_windbreaker.png)
 
-### Fig.S-28
+### Fig.S-44
 
-<a id="fig-s-28"></a>
+<a id="fig-s-44"></a>
 
 - **文件**: `outputs/figs_main_tmp2/paper_llm_error_rate_questions_path-data_questions_v1_clean.jsonl__t1__n500__gpt-5-mini.png`
 - **大小**: 64.3 KB
@@ -608,9 +784,9 @@
 
 ![](outputs/figs_main_tmp2/paper_llm_error_rate_questions_path-data_questions_v1_clean.jsonl__t1__n500__gpt-5-mini.png)
 
-### Fig.S-29
+### Fig.S-45
 
-<a id="fig-s-29"></a>
+<a id="fig-s-45"></a>
 
 - **文件**: `outputs/figs_main_tmp2/paper_tradeoff_bubble_questions_path-data_questions_v1_clean.jsonl__t1__n500__gpt-5-mini.png`
 - **大小**: 68.4 KB
@@ -618,9 +794,9 @@
 
 ![](outputs/figs_main_tmp2/paper_tradeoff_bubble_questions_path-data_questions_v1_clean.jsonl__t1__n500__gpt-5-mini.png)
 
-### Fig.S-30
+### Fig.S-46
 
-<a id="fig-s-30"></a>
+<a id="fig-s-46"></a>
 
 - **文件**: `outputs/figs_main_tmp2/paper_valid_output_rate_questions_path-data_questions_v1_clean.jsonl__t1__n500__gpt-5-mini.png`
 - **大小**: 63.1 KB

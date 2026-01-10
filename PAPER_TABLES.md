@@ -1,6 +1,6 @@
 # 论文表格汇总（自动生成）
 
-- 生成时间：2026-01-10 18:34:29  
+- 生成时间：2026-01-11 02:48:25  
 - 脚本：`scripts/compile_paper_tables.py`
 
 ## 主实验（Main Results）
@@ -1108,6 +1108,54 @@
 | winter_warm_midlayer | B | 116 |
 | winter_warm_midlayer | C | 139 |
 | winter_warm_midlayer | D | 130 |
+
+## 跨模型复核（GPT-5 sanity check，子集）
+
+### figs_main_gpt5_sanity
+
+### Overall summary (GPT-5 sanity)
+
+- **来源**: `outputs/figs_main_gpt5_sanity/paper_table1_overall_questions_path-data_questions_v1_clean.jsonl__t1__n100__gpt-5.csv`  
+- **行数**: 3  
+- **列数**: 13
+
+| strategy | n | acc_mean | acc_std | tokens_mean | calls_mean | latency_mean | valid_output_rate_mean | llm_error_rate_mean | acc_mean__outdoor_dwr_windbreaker | acc_mean__winter_warm_midlayer | acc_std__outdoor_dwr_windbreaker | acc_std__winter_warm_midlayer |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| few_shot | 2 | 0.885 | 0.092 | 1804 | 1.00 | 12.26 | 1.000 | 0 | 0.820 | 0.950 |  |  |
+| cot_few_shot | 2 | 0.855 | 0.092 | 1993 | 1.00 | 16.29 | 1.000 | 0 | 0.790 | 0.920 |  |  |
+| garmentagents_adaptive | 2 | 0.880 | 0.156 | 6209 | 3.12 | 79.57 | 1.000 | 0 | 0.770 | 0.990 |  |  |
+
+### Per-scenario summary (GPT-5 sanity)
+
+- **来源**: `outputs/figs_main_gpt5_sanity/summary_by_strategy.csv`  
+- **行数**: 6  
+- **列数**: 13
+
+| scenario | temperature | n_questions | model | strategy | n | acc_mean | acc_std | tokens_mean | calls_mean | latency_mean | valid_output_rate_mean | llm_error_rate_mean |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| outdoor_dwr_windbreaker | 1 | 100 | gpt-5 | few_shot | 1 | 0.820 |  | 1879 | 1.00 | 13.07 | 1.000 | 0 |
+| outdoor_dwr_windbreaker | 1 | 100 | gpt-5 | cot_few_shot | 1 | 0.790 |  | 2080 | 1.00 | 17.11 | 1.000 | 0 |
+| outdoor_dwr_windbreaker | 1 | 100 | gpt-5 | garmentagents_adaptive | 1 | 0.770 |  | 6636 | 3.18 | 85.29 | 1.000 | 0 |
+| winter_warm_midlayer | 1 | 100 | gpt-5 | garmentagents_adaptive | 1 | 0.990 |  | 5781 | 3.06 | 73.86 | 1.000 | 0 |
+| winter_warm_midlayer | 1 | 100 | gpt-5 | few_shot | 1 | 0.950 |  | 1728 | 1.00 | 11.45 | 1.000 | 0 |
+| winter_warm_midlayer | 1 | 100 | gpt-5 | cot_few_shot | 1 | 0.920 |  | 1905 | 1.00 | 15.47 | 1.000 | 0 |
+
+### Stats tests (GPT-5 sanity)
+
+- **来源**: `outputs/figs_main_gpt5_sanity/stats_tests.csv`  
+- **行数**: 8  
+- **列数**: 8
+
+| scenario | temperature | n_questions | model | test | strategy | p | bh_reject@0.05 |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| outdoor_dwr_windbreaker | 1 | 100 | gpt-5 | kruskal_wallis | ALL | 0.368 |  |
+| outdoor_dwr_windbreaker | 1 | 100 | gpt-5 | mannwhitneyu | cot_few_shot vs few_shot | 1 | False |
+| outdoor_dwr_windbreaker | 1 | 100 | gpt-5 | mannwhitneyu | cot_few_shot vs garmentagents_adaptive | 1 | False |
+| outdoor_dwr_windbreaker | 1 | 100 | gpt-5 | mannwhitneyu | few_shot vs garmentagents_adaptive | 1 | False |
+| winter_warm_midlayer | 1 | 100 | gpt-5 | kruskal_wallis | ALL | 0.368 |  |
+| winter_warm_midlayer | 1 | 100 | gpt-5 | mannwhitneyu | cot_few_shot vs few_shot | 1 | False |
+| winter_warm_midlayer | 1 | 100 | gpt-5 | mannwhitneyu | cot_few_shot vs garmentagents_adaptive | 1 | False |
+| winter_warm_midlayer | 1 | 100 | gpt-5 | mannwhitneyu | few_shot vs garmentagents_adaptive | 1 | False |
 
 ## 消融实验（Ablation）
 
