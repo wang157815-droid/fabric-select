@@ -1,4 +1,4 @@
-## 项目进展总结（截至 2026-01-09）
+## 项目进展总结（截至 2026-01-11）
 
 本文件用于记录：**数据集概况**、**主实验设计**、**主实验结果**、**已生成的论文素材**与**下一步计划**。
 
@@ -12,10 +12,21 @@
   - 逐题日志：`outputs/per_question_log_main.jsonl`（≈30k 行；少量行可能因 JSON 解析失败被分析脚本跳过）
 - **论文素材（主图/主表/统计检验）**：已生成  
   - 输出目录：`outputs/figs_main/`
+- **非 LLM 朴素基线**：已完成并纳入主表/主图  
+  - 策略：`nonllm_feasible_random`, `nonllm_simple_heuristic`（零 API 成本）
+  - 已写入：`outputs/results_main.csv` 与 `outputs/per_question_log_main.jsonl`
+- **跨模型复核（GPT-5 sanity check，子集）**：已完成  
+  - 2 个场景 × 3 个代表策略 × 1 次重复 × 100 题/场景 = **6 runs**
+  - 结果：`outputs/results_gpt5_sanity.csv`
+  - 日志：`outputs/per_question_log_gpt5_sanity.jsonl`
+  - 论文素材：`outputs/figs_main_gpt5_sanity/`
 - **错误分析（Discussion 可用）**：已生成  
   - 报告：`outputs/error_analysis.md`（抽样 80 个错误案例 + 分类统计）
 - **代码已提交并推送**  
-  - 已推送到远程 `main` 分支（最近提交：`c6d3bff`）
+  - 已推送到远程 `main` 分支
+- **论文汇总总表/总图**：已生成并持续更新  
+  - 表格汇总：`PAPER_TABLES.md`
+  - 图片汇总：`PAPER_FIGURES.md`
 
 ---
 
@@ -72,6 +83,11 @@
 - 单智能体：`zero_shot`, `few_shot`, `cot_few_shot`, `self_reflection`, `fashionprompt`
 - 多智能体：`voting`, `weighted_voting`, `borda`, `garmentagents_fixed`, `garmentagents_adaptive`
 
+### 补充对比：非 LLM 朴素基线（0 API 成本）
+
+- `nonllm_feasible_random`：先按 must 约束过滤可行集合，再随机选一个
+- `nonllm_simple_heuristic`：先按 must 过滤，再用少量关键字段启发式排序选最优（不使用 `oracle_scores`，避免“把 ground truth 当 baseline”）
+
 ### 关键日志与可复现入口
 
 - **逐题日志**：`outputs/per_question_log_main.jsonl`
@@ -90,6 +106,8 @@
 
 | 策略 | Acc(总体) | Acc SD | Tokens/题 | Calls/题 | Latency(s)/题 | Valid rate | LLM error rate | Acc(outdoor) | Acc(winter) |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| nonllm_simple_heuristic | 0.570 | 0.035 | 0 | 0.00 | 0.0 | 1.000 | 0.000 | 0.538 | 0.602 |
+| nonllm_feasible_random | 0.365 | 0.014 | 0 | 0.00 | 0.0 | 1.000 | 0.000 | 0.365 | 0.365 |
 | few_shot | 0.780 | 0.035 | 2072 | 1.26 | 9.8 | 0.996 | 0.001 | 0.749 | 0.811 |
 | fashionprompt | 0.742 | 0.019 | 2085 | 1.48 | 15.7 | 0.996 | 0.004 | 0.725 | 0.758 |
 | self_reflection | 0.735 | 0.042 | 3005 | 2.44 | 28.9 | 0.990 | 0.012 | 0.701 | 0.769 |
@@ -106,6 +124,7 @@
 - **最强策略**：`few_shot` 在两个场景均为最佳（总体 **0.780±0.035**；outdoor 0.749 / winter 0.811）。
 - **成本-效果 trade-off**：多智能体类（`voting/weighted_voting/borda/garmentagents_fixed`）平均 **~6500 tokens/题、5 calls/题、~43s/题**，但准确率仅 **~0.40**；相较之下 `few_shot` **~2070 tokens/题、1.26 calls/题、~9.8s/题** 且准确率更高。
 - **`garmentagents_adaptive`**：相比 `garmentagents_fixed`，calls/题 更低（3.73 vs 5.00）与 tokens/题 更低（4890 vs 6553），但准确率更低（0.387 vs 0.397），且 winter 场景明显更差（0.369）。
+- **非 LLM baseline（0 API 成本）**：`nonllm_simple_heuristic` 达到 **0.57**，已接近/超过 `zero_shot`（0.57），说明“结构化属性 + must 过滤”的信息量在本任务中很强；但仍显著低于 `few_shot`（0.78），保留了 LLM 的增益空间。
 
 ---
 
@@ -227,8 +246,19 @@
 ## 下一步（可选增强）
 
 - ✅ **消融实验（Ablation）**：已完成
-- **高阶模型复核（投稿加固，建议优先级：中）**  
-  用 `gpt-5` 在 200 题子集上复核 3 个代表策略（例如 `few_shot`, `cot_few_shot`, `garmentagents_adaptive`），检查趋势一致性。
+- ✅ **高阶模型复核（GPT-5 sanity check）**：已完成  
+  - 结果目录：`outputs/figs_main_gpt5_sanity/`
+  - 代表策略在 gpt-5 上的趋势用于“外部有效性/敏感性分析”（子集 200 题）
 - **论文写作清单（建议立刻启动）**  
   方法（数据集+策略定义）→ 实验设置 → 结果（主表+主图+trade-off）→ 消融分析 → 统计检验 → 错误分析 → 局限与未来工作。
+
+---
+
+## GPT-5 复核实验（Sanity Check）说明（重要复现细节）
+
+- **运行脚本**：`scripts/run_gpt5_sanity.ps1`
+- **结果/日志**：`outputs/results_gpt5_sanity.csv` / `outputs/per_question_log_gpt5_sanity.jsonl`
+- **关键坑与修复**：  
+  - 初版在 `max_tokens=512`（以及单智能体重试 `retry_max_tokens=1024`）下，`gpt-5` 有概率把输出预算全部用于 `reasoning_tokens`，导致 **返回 `status=incomplete` 且 `response_text=''`**，进而出现 `pred=None`（尤其是 `garmentagents_adaptive` 的多角色 JSON 输出更容易触发）。  
+  - 现已将 gpt-5 复核的 `max_tokens` 提高到 **1536**（重试 2048），从而稳定产出可解析文本/JSON，避免无效消耗。
 
