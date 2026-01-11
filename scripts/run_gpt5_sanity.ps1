@@ -2,6 +2,8 @@ param(
   [int]$NQuestionsPerScenario = 100,
   [int]$Seed = 2000,
   [int]$Repeats = 1,
+  [int]$MaxTokens = 1536,
+  [int]$RetryMaxTokens = 2048,
   [string]$QuestionsPath = "data/questions_v1_clean.jsonl",
   [string]$OutDir = "outputs",
   [string]$ResultsName = "results_gpt5_sanity.csv",
@@ -20,6 +22,7 @@ Write-Host "Running GPT-5 sanity check..."
 Write-Host "  model=$env:MODEL"
 Write-Host "  questions_path=$QuestionsPath"
 Write-Host "  repeats=$Repeats n_questions_per_scenario=$NQuestionsPerScenario seed=$Seed"
+Write-Host "  max_tokens=$MaxTokens retry_max_tokens=$RetryMaxTokens"
 Write-Host "  out_dir=$OutDir results=$ResultsName log=$LogName"
 Write-Host "  scenarios=$($Scenarios -join ',')"
 Write-Host "  strategies=$($Strategies -join ',')"
@@ -36,9 +39,9 @@ foreach ($scenario in $Scenarios) {
       --repeats $Repeats `
       --n-questions $NQuestionsPerScenario `
       --seed $Seed `
-      --max-tokens 512 `
+      --max-tokens $MaxTokens `
       --retry-on-none `
-      --retry-max-tokens 1024 `
+      --retry-max-tokens $RetryMaxTokens `
       --progress `
       --progress-every $ProgressEvery `
       --questions-path $QuestionsPath `

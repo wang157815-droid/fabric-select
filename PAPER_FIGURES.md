@@ -1,6 +1,6 @@
 # 论文图片汇总（自动生成）
 
-- 生成时间：2026-01-11 02:48:25  
+- 生成时间：2026-01-11 12:50:44  
 - 脚本：`scripts/compile_paper_figures.py`
 
 说明：本文件引用的是本地 `outputs/figs*` 下的 PNG；如果在 GitHub 上看不到图片，这是因为 `outputs/` 默认被 `.gitignore` 忽略。
