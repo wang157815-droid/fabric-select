@@ -1,17 +1,9 @@
 #!/usr/bin/env python3
 """
-离线消融分析脚本：基于 per_question_log_main.jsonl 中已保存的 5-role agent 输出，
-重新计算不同消融变体的准确率/成本，无需额外 API 调用。
+离线重算多智能体实验的消融结果，不额外调用 API。
 
-支持的消融：
-- A1: No Early Stopping（强制跑满所有 agent）
-- A2: Static Routing + Early Stop（固定顺序 + 早停）
-- A3: 阈值扫描（top1 阈值 / gap 阈值）+ Pareto 曲线
-- B1: 聚合方式消融（majority / weighted / borda / confidence-weighted）
-- B2: #Agents Sweep（K=1..5）
-- C1: Role Dropout（移除单个角色）
-- D1: Clean vs Ambiguous（按 margin 分层）
-- 解释型指标：Constraint Violation Rate（硬约束违反率）
+输入是 `per_question_log_main.jsonl` 中已经保存的 agent 轨迹，输出各类
+消融表和图。
 """
 import json
 import re
@@ -123,26 +115,17 @@ def _simulate_adaptive(
     gap_thresh: float = 0.25,
     disable_early_stop: bool = False,
 ) -> Tuple[Optional[OptionKey], int, int]:
-    """
-    模拟 adaptive 策略：
-    - Round 1: 调用权重最高的 3 个角色
-    - 若 top1 >= top1_thresh 或 gap >= gap_thresh，则早停
-    - 否则 Round 2: 调用剩余 2 个角色
-    
-    返回：(pick, rounds, calls)
-    """
+    """按权重顺序模拟 adaptive 协调，并可关闭早停。"""
     sorted_roles = sorted(weights.items(), key=lambda kv: kv[1], reverse=True)
     r1_roles = [kv[0] for kv in sorted_roles[:3]]
     r2_roles = [kv[0] for kv in sorted_roles[3:]]
-    
-    # Round 1
+
     pick1, dist1 = _aggregate_weighted(decisions, r1_roles, weights)
     top1, gap = _top1_gap(dist1)
-    
+
     if not disable_early_stop and (top1 >= top1_thresh or gap >= gap_thresh):
         return pick1, 1, len(r1_roles)
-    
-    # Round 2
+
     all_roles = r1_roles + r2_roles
     pick2, dist2 = _aggregate_weighted(decisions, all_roles, weights)
     return pick2, 2, len(all_roles)
@@ -203,28 +186,17 @@ def _simulate_static_routing(
     top1_thresh: float = 0.70,
     gap_thresh: float = 0.25,
 ) -> Tuple[Optional[OptionKey], int, int]:
-    """
-    模拟 static routing + early stop：
-    - 固定顺序调用 agent（按字母顺序而非权重）
-    - Round 1: 前 3 个 agent
-    - 若达到一致性阈值则早停
-    - 否则 Round 2: 剩余 2 个 agent
-    
-    返回：(pick, rounds, calls)
-    """
-    # 固定顺序（字母序）而非按权重
+    """按固定角色顺序模拟 static routing + early stop。"""
     static_order = sorted(ROLES)
     r1_roles = static_order[:3]
     r2_roles = static_order[3:]
-    
-    # Round 1
+
     pick1, dist1 = _aggregate_weighted(decisions, r1_roles, weights)
     top1, gap = _top1_gap(dist1)
-    
+
     if top1 >= top1_thresh or gap >= gap_thresh:
         return pick1, 1, len(r1_roles)
-    
-    # Round 2
+
     all_roles = r1_roles + r2_roles
     pick2, dist2 = _aggregate_weighted(decisions, all_roles, weights)
     return pick2, 2, len(all_roles)
@@ -257,7 +229,6 @@ def main(
         key = (rec["strategy"], rec["scenario"], int(rec.get("repeat_idx", 0)))
         grouped[key].append(rec)
     
-    # ========== A1: No Early Stopping ==========
     typer.echo("\n=== A1: No Early Stopping ===")
     a1_results = []
     for (strategy, scenario, repeat_idx), recs in grouped.items():
@@ -269,7 +240,7 @@ def main(
         for rec in recs:
             decisions = rec.get("agent_decisions", {})
             gold = rec.get("gold")
-            # 强制跑满（disable_early_stop=True）
+            # 关闭早停，模拟跑满全部角色。
             pick, rounds, calls = _simulate_adaptive(decisions, weights, disable_early_stop=True)
             if pick == gold:
                 correct += 1
@@ -288,7 +259,7 @@ def main(
         })
         typer.echo(f"  {scenario} r{repeat_idx}: acc={acc:.3f} avg_calls={avg_calls:.2f}")
     
-    # 同时计算原始 adaptive 的结果作为对比
+    # 同时保留默认 adaptive 结果作对照。
     for (strategy, scenario, repeat_idx), recs in grouped.items():
         if strategy != "garmentagents_adaptive":
             continue
@@ -315,7 +286,6 @@ def main(
             "avg_calls": avg_calls,
         })
     
-    # ========== A2: Static Routing + Early Stop ==========
     typer.echo("\n=== A2: Static Routing + Early Stop ===")
     a2_results = []
     for (strategy, scenario, repeat_idx), recs in grouped.items():
@@ -323,7 +293,6 @@ def main(
             continue
         weights = _get_role_weights(scenario)
         
-        # Static routing (固定字母顺序)
         correct_static = 0
         total_calls_static = 0
         for rec in recs:
@@ -346,7 +315,7 @@ def main(
         })
         typer.echo(f"  static+stop {scenario} r{repeat_idx}: acc={acc_static:.3f} avg_calls={avg_calls_static:.2f}")
         
-        # Adaptive routing (按权重顺序) - 作为对比
+        # 同场对比默认 adaptive。
         correct_adaptive = 0
         total_calls_adaptive = 0
         for rec in recs:
@@ -367,7 +336,6 @@ def main(
             "avg_calls": avg_calls_adaptive,
         })
     
-    # ========== A3: 阈值扫描 ==========
     typer.echo("\n=== A3: Threshold Sweep ===")
     a3_results = []
     thresholds = [(0.5, 0.15), (0.6, 0.20), (0.7, 0.25), (0.8, 0.30), (0.9, 0.35), (1.0, 1.0)]  # (top1_thresh, gap_thresh)
@@ -398,10 +366,9 @@ def main(
                 "avg_calls": avg_calls,
             })
     
-    # ========== B1: 聚合方式消融 ==========
     typer.echo("\n=== B1: Aggregator Ablation ===")
     b1_results = []
-    # 使用 garmentagents_fixed 的数据（所有 5 个 agent 都有输出）
+    # 用 garmentagents_fixed 做聚合方式对比，避免缺失角色输出。
     for (strategy, scenario, repeat_idx), recs in grouped.items():
         if strategy != "garmentagents_fixed":
             continue
@@ -432,7 +399,6 @@ def main(
             })
             typer.echo(f"  {agg_name} {scenario} r{repeat_idx}: acc={acc:.3f}")
     
-    # ========== B2: #Agents Sweep ==========
     typer.echo("\n=== B2: #Agents Sweep ===")
     b2_results = []
     for (strategy, scenario, repeat_idx), recs in grouped.items():
@@ -462,7 +428,6 @@ def main(
             })
             typer.echo(f"  K={k} {scenario} r{repeat_idx}: acc={acc:.3f}")
     
-    # ========== C1: Role Dropout ==========
     typer.echo("\n=== C1: Role Dropout ===")
     c1_results = []
     for (strategy, scenario, repeat_idx), recs in grouped.items():
@@ -488,7 +453,7 @@ def main(
             "accuracy": acc_baseline,
         })
         
-        # Drop each role
+        # Drop one role at a time.
         for drop_role in ROLES:
             remaining_roles = [r for r in ROLES if r != drop_role]
             correct = 0
@@ -508,14 +473,13 @@ def main(
             })
             typer.echo(f"  drop={drop_role} {scenario} r{repeat_idx}: acc={acc:.3f} (baseline={acc_baseline:.3f})")
     
-    # ========== D1: Clean vs Ambiguous ==========
     typer.echo("\n=== D1: Clean vs Ambiguous (by margin) ===")
     d1_results = []
     
     # 按 margin 分层：ambiguous (margin < 0.08) vs clean (margin >= 0.08)
     margin_threshold = 0.08
     
-    # 对所有策略进行分层分析
+    # 对所有策略做同一套分层统计。
     strategy_groups: Dict[Tuple[str, str, int], List[Dict[str, Any]]] = defaultdict(list)
     for rec in all_records:
         if rec.get("pred") in ("A", "B", "C", "D"):
@@ -574,7 +538,6 @@ def main(
         if clean_accs and ambig_accs:
             typer.echo(f"  {strategy}: clean={sum(clean_accs)/len(clean_accs):.3f}, ambiguous={sum(ambig_accs)/len(ambig_accs):.3f}")
     
-    # ========== Constraint Violation Rate ==========
     typer.echo("\n=== Constraint Violation Rate ===")
     violation_results = []
     
@@ -594,7 +557,7 @@ def main(
             option_tags = q.get("option_tags", {})
             pred_tags = option_tags.get(pred, [])
             
-            # 检查是否选择了违反 must 约束的选项
+            # 检查是否选中了违反 must 约束的候选。
             if "must_fail" in pred_tags:
                 must_violations += 1
         
@@ -615,7 +578,7 @@ def main(
         if rates:
             typer.echo(f"  {strategy}: violation_rate={sum(rates)/len(rates):.3f}")
     
-    # ========== 保存结果 ==========
+    # 保存表格结果。
     import csv
     
     def save_csv(data: List[Dict], filename: str):
@@ -637,7 +600,7 @@ def main(
     save_csv(d1_results, "ablation_d1_clean_vs_ambiguous.csv")
     save_csv(violation_results, "ablation_constraint_violation.csv")
     
-    # ========== 生成汇总报告 ==========
+    # 生成汇总报告。
     report_lines = ["# Ablation Study Results (Offline)\n"]
     report_lines.append("基于 `per_question_log_main.jsonl` 中已保存的 5-role agent 输出进行离线计算。\n")
     
@@ -701,7 +664,7 @@ def main(
     report_path.write_text("\n".join(report_lines), encoding="utf-8")
     typer.echo(f"Wrote {report_path}")
     
-    # ========== 生成可视化图表 ==========
+    # 生成图表。
     try:
         import matplotlib.pyplot as plt
         import numpy as np
@@ -709,7 +672,6 @@ def main(
         plt.rcParams["font.family"] = "DejaVu Sans"
         plt.rcParams["axes.unicode_minus"] = False
         
-        # --- B1: Aggregator Comparison Bar Chart ---
         if b1_results:
             typer.echo("\nGenerating B1 aggregator bar chart...")
             agg_names = ["majority", "weighted", "borda", "confidence"]
@@ -735,7 +697,6 @@ def main(
             plt.close(fig)
             typer.echo(f"Wrote {out_dir / 'ablation_b1_aggregator.png'}")
         
-        # --- B2: #Agents Sweep Line Chart ---
         if b2_results:
             typer.echo("Generating B2 agents sweep line chart...")
             fig, ax = plt.subplots(figsize=(8, 5))
@@ -759,7 +720,6 @@ def main(
             plt.close(fig)
             typer.echo(f"Wrote {out_dir / 'ablation_b2_agents_sweep.png'}")
         
-        # --- C1: Role Dropout Bar Chart ---
         if c1_results:
             typer.echo("Generating C1 role dropout bar chart...")
             roles_to_plot = ["none", "textile", "technical", "sourcing", "product", "compliance"]
@@ -770,7 +730,7 @@ def main(
             
             fig, ax = plt.subplots(figsize=(9, 5))
             x = np.arange(len(roles_to_plot))
-            colors = ["#59a14f"] + ["#e15759"] * 5  # green for baseline, red for drops
+            colors = ["#59a14f"] + ["#e15759"] * 5
             bars = ax.bar(x, [role_means[r] for r in roles_to_plot], color=colors)
             ax.set_xticks(x)
             ax.set_xticklabels(["baseline\n(all 5)"] + [f"drop\n{r}" for r in roles_to_plot[1:]], fontsize=10)
@@ -787,12 +747,10 @@ def main(
             plt.close(fig)
             typer.echo(f"Wrote {out_dir / 'ablation_c1_role_dropout.png'}")
         
-        # --- A1: Early Stop Comparison ---
         if a1_results:
             typer.echo("Generating A1 early stop comparison...")
             fig, axes = plt.subplots(1, 2, figsize=(12, 5))
             
-            # Accuracy comparison
             ax = axes[0]
             variants = ["adaptive_default", "adaptive_no_early_stop"]
             variant_labels = ["With Early Stop", "No Early Stop"]
@@ -809,7 +767,6 @@ def main(
                 ax.annotate(f"{h:.3f}", xy=(bar.get_x() + bar.get_width() / 2, h),
                             ha="center", va="bottom", fontsize=10)
             
-            # Calls comparison
             ax = axes[1]
             call_means = []
             for v in variants:
@@ -830,7 +787,6 @@ def main(
             plt.close(fig)
             typer.echo(f"Wrote {out_dir / 'ablation_a1_early_stop.png'}")
         
-        # --- A3: Threshold Sweep Heatmap ---
         if a3_results:
             typer.echo("Generating A3 threshold sweep chart...")
             fig, ax = plt.subplots(figsize=(8, 5))
@@ -866,11 +822,9 @@ def main(
             plt.close(fig)
             typer.echo(f"Wrote {out_dir / 'ablation_a3_threshold_sweep.png'}")
             
-            # --- A3: Pareto Curve (Accuracy vs Cost) ---
             typer.echo("Generating A3 Pareto curve...")
             fig, ax = plt.subplots(figsize=(8, 6))
             
-            # Plot points for each threshold setting
             for i, (t1, g) in enumerate(thresholds_list):
                 acc = acc_means[i]
                 calls = call_means[i]
@@ -878,7 +832,6 @@ def main(
                 ax.annotate(f"({t1:.1f},{g:.2f})", (calls, acc), 
                            textcoords="offset points", xytext=(5, 5), fontsize=8)
             
-            # Connect points to show trade-off
             ax.plot(call_means, acc_means, 'b--', alpha=0.5, linewidth=1.5)
             
             ax.set_xlabel("Avg API Calls per Question", fontsize=12)
@@ -892,7 +845,6 @@ def main(
             plt.close(fig)
             typer.echo(f"Wrote {out_dir / 'ablation_a3_pareto_curve.png'}")
         
-        # --- A2: Static vs Adaptive Routing ---
         if a2_results:
             typer.echo("Generating A2 routing comparison...")
             fig, axes = plt.subplots(1, 2, figsize=(12, 5))
@@ -900,7 +852,6 @@ def main(
             variants = ["static_routing_early_stop", "adaptive_routing_early_stop"]
             variant_labels = ["Static Routing", "Adaptive Routing"]
             
-            # Accuracy
             ax = axes[0]
             means = []
             for v in variants:
@@ -915,7 +866,6 @@ def main(
                 ax.annotate(f"{h:.3f}", xy=(bar.get_x() + bar.get_width() / 2, h),
                             ha="center", va="bottom", fontsize=10)
             
-            # Calls
             ax = axes[1]
             call_means = []
             for v in variants:
@@ -936,7 +886,6 @@ def main(
             plt.close(fig)
             typer.echo(f"Wrote {out_dir / 'ablation_a2_routing.png'}")
         
-        # --- D1: Clean vs Ambiguous ---
         if d1_results:
             typer.echo("Generating D1 clean vs ambiguous chart...")
             fig, ax = plt.subplots(figsize=(12, 6))
@@ -968,7 +917,6 @@ def main(
             plt.close(fig)
             typer.echo(f"Wrote {out_dir / 'ablation_d1_clean_vs_ambiguous.png'}")
         
-        # --- Constraint Violation Rate ---
         if violation_results:
             typer.echo("Generating constraint violation chart...")
             fig, ax = plt.subplots(figsize=(12, 6))

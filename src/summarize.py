@@ -403,9 +403,8 @@ def main(
         plt.savefig(out_path, dpi=200, bbox_inches="tight")
         plt.close()
 
-    # Paper-mode extras: overall tables + richer plots + dataset credibility + grouped performance
+    # Extra outputs used by the paper.
     if paper:
-        # 1) Paper Table 1: overall summary across scenarios (within the same config bucket)
         paper_bucket_cols = ["questions_path", "temperature", "n_questions", "model"] if "questions_path" in df.columns else ["temperature", "n_questions", "model"]
         for bucket_vals, sdf in df.groupby(paper_bucket_cols, dropna=False):
             bucket_vals_t = _as_tuple(bucket_vals)
@@ -413,7 +412,7 @@ def main(
             tag = _bucket_tag(paper_bucket_cols, bucket_vals)
             title_bits = ", ".join([f"{k}={v}" for k, v in bucket_rec.items() if k != "questions_path"])
 
-            # overall (all scenarios pooled)
+            # Pool all scenarios within the same config bucket.
             overall = (
                 sdf.groupby(["strategy"], dropna=False)
                 .agg(
@@ -437,14 +436,13 @@ def main(
             else:
                 overall = overall.rename(columns={"llm_error_mean": "llm_error_rate_mean"})
 
-            # per-scenario accuracy mean±std (wide)
+            # Per-scenario accuracy columns.
             per_sc = (
                 sdf.groupby(["scenario", "strategy"], dropna=False)
                 .agg(acc_mean=("accuracy", "mean"), acc_std=("accuracy", "std"))
                 .reset_index()
             )
             per_sc["scenario"] = per_sc["scenario"].astype(str)
-            # pivot to columns acc_mean__scenario, acc_std__scenario
             per_sc_mean = per_sc.pivot(index="strategy", columns="scenario", values="acc_mean")
             per_sc_std = per_sc.pivot(index="strategy", columns="scenario", values="acc_std")
             per_sc_mean.columns = [f"acc_mean__{c}" for c in per_sc_mean.columns]
@@ -452,7 +450,7 @@ def main(
             per_sc_wide = pd.concat([per_sc_mean, per_sc_std], axis=1).reset_index()
 
             paper_table = overall.merge(per_sc_wide, on="strategy", how="left")
-            # stable ordering
+            # Keep strategy order stable across outputs.
             paper_table["strategy"] = paper_table["strategy"].astype(str)
             order = _ensure_strategy_order(list(paper_table["strategy"].unique()))
             paper_table["strategy"] = pd.Categorical(paper_table["strategy"], categories=order, ordered=True)
@@ -461,12 +459,12 @@ def main(
             out_csv = out_dir / f"paper_table1_overall_{tag}.csv"
             paper_table.to_csv(out_csv, index=False)
 
-            # 2) Paper Figure: bubble trade-off (tokens vs acc, bubble size ~ latency)
+            # Bubble plot: tokens vs accuracy.
             try:
                 bub = paper_table.copy()
                 if "latency_mean" in bub.columns:
                     sizes = bub["latency_mean"].astype(float).fillna(0.0)
-                    # size scaling: keep within reasonable pixels
+                    # Keep marker sizes in a readable range.
                     s = 40 + 260 * (sizes - sizes.min()) / (sizes.max() - sizes.min() + 1e-9)
                 else:
                     s = 80
@@ -474,7 +472,7 @@ def main(
                 plt.scatter(bub["tokens_mean"], bub["acc_mean"], s=s, alpha=0.75)
                 for _, row in bub.iterrows():
                     plt.annotate(str(row["strategy"]), (row["tokens_mean"], row["acc_mean"]), textcoords="offset points", xytext=(6, 6), fontsize=8)
-                # highlight adaptive
+                # Mark the adaptive strategy.
                 ga = bub[bub["strategy"] == "garmentagents_adaptive"]
                 if not ga.empty:
                     plt.scatter(ga["tokens_mean"], ga["acc_mean"], marker="*", s=240, color="red", alpha=0.95, label="garmentagents_adaptive")
@@ -489,13 +487,11 @@ def main(
             except Exception:
                 pass
 
-            # 3) Paper Figure: grouped bar by scenario (accuracy)
+            # Grouped accuracy bars when there are exactly two scenarios.
             try:
                 scenarios = sorted([str(x) for x in sdf["scenario"].unique()])
-                # keep only two scenarios for grouped layout; if more, fallback to per-scenario bars already generated
                 if len(scenarios) == 2:
                     sc_a, sc_b = scenarios[0], scenarios[1]
-                    # build from per_sc (mean/std)
                     tmp = per_sc.copy()
                     tmp["strategy"] = tmp["strategy"].astype(str)
                     tmp["scenario"] = tmp["scenario"].astype(str)
@@ -521,7 +517,7 @@ def main(
             except Exception:
                 pass
 
-            # 4) Paper Figure: reliability (valid output rate / llm error rate), if available
+            # Reliability plots, if log-derived rates are available.
             try:
                 if "valid_output_rate_mean" in paper_table.columns:
                     tmp = paper_table.copy()
@@ -550,11 +546,10 @@ def main(
             except Exception:
                 pass
 
-        # 4) Dataset credibility + grouped performance by difficulty/constraints (requires questions_jsonl + log_jsonl)
+        # Dataset summaries and grouped accuracy.
         if questions_jsonl is not None and Path(questions_jsonl).exists():
             qdf = _load_questions_meta(Path(questions_jsonl))
             if not qdf.empty:
-                # dataset summary
                 ds = (
                     qdf.groupby(["scenario"], dropna=False)
                     .agg(
@@ -567,7 +562,6 @@ def main(
                     )
                     .reset_index()
                 )
-                # answer distribution (gold)
                 ans = (
                     qdf.groupby(["scenario", "gold"], dropna=False)
                     .agg(n=("question_id", "count"))
@@ -576,7 +570,7 @@ def main(
                 ds.to_csv(out_dir / "paper_dataset_summary_by_scenario.csv", index=False)
                 ans.to_csv(out_dir / "paper_dataset_answer_dist.csv", index=False)
 
-                # dataset plots: margin histogram + must_n distribution
+                # Dataset-level plots.
                 try:
                     import matplotlib.pyplot as plt
 
@@ -614,14 +608,14 @@ def main(
             try:
                 qdf = _load_questions_meta(Path(questions_jsonl))
                 if not qdf.empty and not log_df.empty:
-                    # join to get margin/must_n/flags
+                    # Merge question metadata into the run log.
                     mdf = log_df.merge(qdf, on=["question_id"], how="left", suffixes=("", "_q"))
-                    # missing flags -> False
+                    # Missing flags mean the constraint did not appear in that question.
                     for c in ["must_has_cost", "must_has_lead", "must_has_compliance", "must_has_weight", "must_has_perf"]:
                         if c in mdf.columns:
                             mdf[c] = mdf[c].fillna(False).astype(bool)
 
-                    # difficulty buckets per scenario (tertiles)
+                    # Split margins into per-scenario tertiles.
                     def _bucket_margin(sub):
                         m = sub["margin"].astype(float)
                         q33 = float(np.nanquantile(m, 1 / 3))
@@ -652,7 +646,6 @@ def main(
 
                     mdf["difficulty"] = mdf.apply(_assign_bucket, axis=1)
 
-                    # per-run accuracy in each difficulty bucket
                     run_cols = ["strategy", "scenario", "temperature", "repeat_idx", "seed"]
                     per_run = (
                         mdf.groupby([*run_cols, "difficulty"], dropna=False)
@@ -661,7 +654,6 @@ def main(
                     )
                     per_run.to_csv(out_dir / "paper_acc_by_difficulty_per_run.csv", index=False)
 
-                    # aggregate across repeats
                     agg = (
                         per_run.groupby(["strategy", "scenario", "difficulty"], dropna=False)
                         .agg(acc_mean=("acc", "mean"), acc_std=("acc", "std"))
@@ -669,7 +661,7 @@ def main(
                     )
                     agg.to_csv(out_dir / "paper_acc_by_difficulty.csv", index=False)
 
-                    # heatmap per scenario
+                    # Difficulty heatmaps.
                     try:
                         import matplotlib.pyplot as plt
 
@@ -701,7 +693,7 @@ def main(
                     except Exception:
                         pass
 
-                    # constraint-type grouping (by must keyword flags)
+                    # Accuracy by constraint type.
                     flag_cols = ["must_has_cost", "must_has_lead", "must_has_compliance", "must_has_weight", "must_has_perf"]
                     flag_rows = []
                     for flag in flag_cols:
@@ -727,7 +719,7 @@ def main(
                         )
                         agg_flag.to_csv(out_dir / "paper_acc_by_constraint.csv", index=False)
 
-                        # also save dataset counts for each constraint flag
+                        # Save the question counts behind each constraint group.
                         ds_flag = []
                         for sc in sorted([str(x) for x in qdf["scenario"].unique()]):
                             subq = qdf[qdf["scenario"] == sc]
@@ -744,7 +736,7 @@ def main(
                         if ds_flag:
                             pd.DataFrame(ds_flag).to_csv(out_dir / "paper_dataset_constraint_counts.csv", index=False)
 
-                        # heatmap per scenario
+                        # Constraint heatmaps.
                         try:
                             import matplotlib.pyplot as plt
 

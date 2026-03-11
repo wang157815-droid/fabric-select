@@ -365,7 +365,7 @@ def run_multi_strategy(
         }
 
     if strategy == "garmentagents_adaptive":
-        # Round 1：只召集权重最高的 3 个角色
+        # 先调用权重最高的 3 个角色。
         sorted_roles = sorted(role_weights.items(), key=lambda kv: kv[1], reverse=True)
         r1_roles = [kv[0] for kv in sorted_roles[:3]]
         r2_roles = [r for r, _ in ROLES if r not in r1_roles]
@@ -374,7 +374,7 @@ def run_multi_strategy(
         pick1, dist1 = _aggregate_weighted(decisions, role_weights=role_weights)
         top1, gap = _top1_gap(dist1)
 
-        # early-stop
+        # 共识已经足够稳定时直接早停。
         if top1 >= 0.70 or gap >= 0.25:
             return {
                 "pick": pick1,
@@ -390,7 +390,7 @@ def run_multi_strategy(
                 },
             }
 
-        # Round 2：补齐剩余角色
+        # 需要时再补齐剩余角色。
         call_roles(r2_roles, round_name="r2")
         pick2, dist2 = _aggregate_weighted(decisions, role_weights=role_weights)
         top1b, gapb = _top1_gap(dist2)

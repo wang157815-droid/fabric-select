@@ -1,16 +1,8 @@
 """
-Rewind a specific (strategy, scenario, temperature, repeat_idx) run inside a JSONL log.
+Rewind a specific run inside a JSONL log.
 
-Use case:
-- You stopped a long run and want to "rewind" resume progress to an earlier point
-  (e.g., resume says completed=396 but you want to restart from completed=356).
-
-This script:
-- Finds question_ids for the target run in order of first appearance
-- Keeps only the first N unique question_ids for that run
-- Rewrites the log file (and creates a timestamped backup)
-
-It never deletes lines that are not valid JSON; those lines are preserved verbatim.
+The script keeps only the first N unique `question_id`s for the target run,
+backs up the original file, and leaves malformed JSON lines untouched.
 """
 
 from __future__ import annotations
@@ -59,7 +51,7 @@ def main() -> int:
     if keep_n <= 0:
         raise SystemExit("--keep must be > 0")
 
-    # 1) First pass: collect unique question_ids in order of first appearance
+    # Collect unique question_ids in first-seen order.
     order: list[str] = []
     seen: set[str] = set()
     with log_path.open("r", encoding="utf-8") as f:
@@ -115,13 +107,13 @@ def main() -> int:
         print("Dry-run: no files modified.")
         return 0
 
-    # 2) Backup
+    # Backup before rewriting.
     ts = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     backup_path = log_path.with_suffix(log_path.suffix + f".bak_{ts}")
     shutil.copy2(log_path, backup_path)
     print(f"Backup written: {backup_path}")
 
-    # 3) Rewrite
+    # Rewrite the log and drop later question_ids from the target run.
     tmp_path = log_path.with_suffix(log_path.suffix + ".tmp")
     kept_lines = 0
     dropped_lines = 0
@@ -135,7 +127,7 @@ def main() -> int:
             try:
                 obj = json.loads(s)
             except Exception:
-                # Preserve invalid JSON lines verbatim
+                # Keep malformed lines untouched.
                 fout.write(line)
                 kept_lines += 1
                 continue

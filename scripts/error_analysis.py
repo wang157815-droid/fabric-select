@@ -24,18 +24,15 @@ def classify_error(rec: Dict[str, Any], question: Dict[str, Any] | None) -> str:
     pred = rec.get("pred")
     gold = rec.get("gold")
     
-    # 1. 输出为空
     if pred is None or pred not in ("A", "B", "C", "D"):
         return "pred_null"
     
-    # 2. 检查是否选了 must_fail 选项
     if question:
         option_tags = question.get("option_tags", {})
         pred_tags = option_tags.get(pred, [])
         if "must_fail" in pred_tags:
             return "must_fail_chosen"
     
-    # 3. 其他情况归为软偏好权衡失误
     return "soft_tradeoff"
 
 

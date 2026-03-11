@@ -1,15 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-把论文相关表格（CSV/MD）汇总到一个 Markdown 文件中，便于直接复制到论文主文/附录。
-
-默认会扫描：
-- outputs/figs_main/*.csv
-- outputs/figs_ablation/*.csv
-- outputs/figs_ablation/ablation_report.md
-
-输出：
-- PAPER_TABLES.md（默认放在仓库根目录，方便被 Git 跟踪；`outputs/` 默认被 .gitignore 忽略）
+把论文相关表格汇总到一个 Markdown 文件里，方便统一查看和引用。
 """
 
 from __future__ import annotations
@@ -162,7 +154,7 @@ def main(
     pieces.append("# 论文表格汇总（自动生成）\n")
     pieces.append(f"- 生成时间：{_now_ts()}  \n- 脚本：`scripts/compile_paper_tables.py`\n")
 
-    # ---------- Main tables ----------
+    # Main results.
     pieces.append("## 主实验（Main Results）\n")
     main_order: List[Tuple[str, str, Optional[str]]] = [
         ("Table 1", "总体结果汇总（mean±std，含成本/可靠性指标）", "paper_table1_overall"),
@@ -174,7 +166,7 @@ def main(
         ("Table 5", "统计检验（Kruskal–Wallis / Mann–Whitney U + BH-FDR）", "stats_tests"),
     ]
 
-    # paper_table1_overall 文件名带很多后缀，做前缀匹配
+    # `paper_table1_overall` 的文件名会带额外后缀，所以这里做前缀匹配。
     def pick_by_prefix(dir_path: Path, prefix: str) -> Optional[Path]:
         cand = sorted(dir_path.glob(prefix + "*.csv"))
         return cand[0] if cand else None
@@ -204,8 +196,7 @@ def main(
         else:
             pieces.append(f"### {table_id} {title}\n\n- **缺失**：未找到 `{fp.as_posix()}`\n\n")
 
-    # ---------- Cross-model sanity check (GPT-5) ----------
-    # 约定：将 gpt-5 复核的 summarize 输出到 outputs/figs_main_gpt5* 目录
+    # GPT-5 子集复核结果放在 `outputs/figs_main_gpt5*`。
     extra_root = main_dir.parent
     gpt5_dirs = sorted([p for p in extra_root.glob("figs_main_gpt5*") if p.is_dir()])
     if gpt5_dirs:
@@ -213,7 +204,7 @@ def main(
         for d in gpt5_dirs:
             pieces.append(f"### {d.name}\n")
 
-            # 最小可复核集合：overall + per-scenario + stats
+            # 最少保留 overall、per-scenario 和 stats 三组表。
             v_table = pick_by_prefix(d, "paper_table1_overall")
             if v_table:
                 pieces.append(_table_section_csv(title="Overall summary (GPT-5 sanity)", path=v_table, table_id=None))
@@ -232,18 +223,18 @@ def main(
             else:
                 pieces.append(f"- **缺失**：未找到 `{v_stats.as_posix()}`\n")
 
-    # ---------- Ablation tables ----------
+    # Ablation tables.
     pieces.append("## 消融实验（Ablation）\n")
     ablation_md = ablation_dir / "ablation_report.md"
     if ablation_md.exists():
         md = ablation_md.read_text(encoding="utf-8")
-        md = _heading_shift(md, shift=2)  # 把 ablation_report 的 # 变成 ###（嵌套在本章节下）
+        md = _heading_shift(md, shift=2)  # 让 ablation_report 的标题层级挂到本章节下面。
         pieces.append(md)
         pieces.append(f"\n- **来源**: `{ablation_md.as_posix()}`\n")
     else:
         pieces.append(f"- **缺失**：未找到 `{ablation_md.as_posix()}`\n")
 
-    # 附录：把消融 CSV 也放进来（便于引用/复核）
+    # 同时附上原始消融 CSV，方便回查。
     pieces.append("\n## 附录：消融 CSV 明细（可复核）\n")
     ablation_csvs = sorted(ablation_dir.glob("ablation_*.csv"))
     if not ablation_csvs:

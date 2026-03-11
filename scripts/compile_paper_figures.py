@@ -1,16 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-把实验结果图片（PNG）汇总到一个 Markdown 文件中，便于写论文时统一管理/引用。
-
-默认扫描（只扫 outputs/figs*，避免把 PDF 解析页之类的图片混进来）：
-- outputs/figs_main/**/*.png
-- outputs/figs_ablation/**/*.png
-- outputs/figs_main_*/*.png（partial/tmp/test 等）
-- outputs/figs/*.png（早期小规模试跑的图，单独放到 Appendix）
-
-输出：
-- PAPER_FIGURES.md（默认放在仓库根目录，方便被 Git 跟踪；`outputs/` 默认被 .gitignore 忽略）
+把实验结果图片汇总到一个 Markdown 文件里，方便统一查看和引用。
 """
 
 from __future__ import annotations
@@ -68,7 +59,7 @@ def _scan_pngs(outputs_dir: Path) -> Dict[str, List[Path]]:
         if p.is_file():
             groups["Ablation (figs_ablation)"].append(p)
 
-    # main aux dirs: figs_main_partial / figs_main_tmp / figs_main_ps1_test / figs_main_tmp2 ...
+    # auxiliary main-result directories
     for d in sorted(outputs_dir.glob("figs_main_*")):
         if not d.is_dir():
             continue
@@ -76,7 +67,7 @@ def _scan_pngs(outputs_dir: Path) -> Dict[str, List[Path]]:
             if p.is_file():
                 groups["Main Aux (figs_main_*)"].append(p)
 
-    # early figs
+    # early small-run figures
     for p in sorted((outputs_dir / "figs").glob("**/*.png")):
         if p.is_file():
             groups["Appendix / Small Runs (figs)"].append(p)
@@ -140,7 +131,7 @@ def main(
     pieces.append(f"- 生成时间：{_now_ts()}  \n- 脚本：`scripts/compile_paper_figures.py`\n")
     pieces.append("说明：本文件引用的是本地 `outputs/figs*` 下的 PNG；如果在 GitHub 上看不到图片，这是因为 `outputs/` 默认被 `.gitignore` 忽略。\n")
 
-    # 固定前缀编号（更像论文引用）
+    # Use stable figure IDs across runs.
     order: List[Tuple[str, str]] = [
         ("Main Results (figs_main)", "Fig.1-"),
         ("Ablation (figs_ablation)", "Fig.A-"),
@@ -152,7 +143,7 @@ def main(
         if group_key not in groups:
             continue
         body = _render_group(group_key, groups[group_key], prefix)
-        # tmp/test/小规模试跑的图默认折叠，避免干扰主线
+        # Auxiliary groups stay folded by default.
         if group_key in ("Main Aux (figs_main_*)", "Appendix / Small Runs (figs)"):
             body = _wrap_details(f"{group_key}（{len(groups[group_key])} 张）", body, open_default=False)
         pieces.append(body)
