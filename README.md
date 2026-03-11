@@ -1,5 +1,7 @@
 # fabric-select-bench
 
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.18948729.svg)](https://doi.org/10.5281/zenodo.18948729)
+
 `fabric-select-bench` 是一个面向面料选择任务的多选题 benchmark。仓库里包含数据生成、题目生成、策略评测，以及结果汇总和绘图脚本。
 
 目前主要比较三类方法：
