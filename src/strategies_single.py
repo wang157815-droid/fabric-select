@@ -11,7 +11,7 @@ OptionKey = str  # "A"/"B"/"C"/"D"
 
 
 _RE_TAGGED = re.compile(
-    r"(?im)^\s*(?:FINAL|INITIAL|Final|Initial|final|initial|答案|选择|Answer)\s*[:：]\s*[<（(\[]?\s*([ABCD])\s*[>）)\]]?\b"
+    r"(?im)^\s*(?:FINAL|INITIAL|Final|Initial|final|initial|Answer|Choice)\s*[:：]\s*[<(\[]?\s*([ABCD])\s*[>)\]]?\b"
 )
 _RE_LINE_ONLY = re.compile(r"(?m)^\s*([ABCD])\s*$")
 _RE_STANDALONE = re.compile(r"\b([ABCD])\b")
@@ -32,17 +32,17 @@ def extract_pick(text: str) -> Optional[OptionKey]:
         except Exception:
             pass
 
-    # 2) Tagged line（优先 FINAL/INITIAL 等）
+    # 2) Tagged line (prefer FINAL/INITIAL when present)
     m = _RE_TAGGED.search(text)
     if m:
         return m.group(1)
 
-    # 3) 单独一行的字母（更可靠）
+    # 3) A standalone letter on its own line
     line_m = _RE_LINE_ONLY.findall(text)
     if line_m:
         return line_m[-1]
 
-    # 4) 兜底：取最后一个出现的 A/B/C/D（独立词）
+    # 4) Fallback: take the last standalone A/B/C/D token
     all_m = _RE_STANDALONE.findall(text)
     if all_m:
         return all_m[-1]
@@ -82,12 +82,12 @@ def run_single_strategy(
     seed: Optional[int] = None,
 ) -> Dict[str, Any]:
     """
-    单智能体策略入口。
+    Entry point for single-agent strategies.
 
-    Returns（JSON 可序列化）:
-      - pick: "A"/"B"/"C"/"D"（若抽取失败则为 None）
-      - calls: 每次 LLM 调用的记录（messages/response/usage/latency）
-      - raw_output: 最终一次调用的原始输出
+    Returns (JSON-serializable):
+      - pick: "A"/"B"/"C"/"D" (or None if extraction fails)
+      - calls: records for each LLM call (messages/response/usage/latency)
+      - raw_output: raw output from the final call
     """
 
     scenario = str(question["scenario"])
@@ -115,7 +115,8 @@ def run_single_strategy(
 
     if strategy == "cot_few_shot":
         cot_inst = (
-            "请先用 2-4 条要点说明你的判断依据（不要输出长篇推理），最后一行只输出：FINAL: X（X 为 A/B/C/D）。"
+            "First give 2-4 short bullet points for your evidence (do not provide long chain-of-thought). "
+            "On the final line output only: FINAL: X (where X is A/B/C/D)."
         )
         messages = [{"role": "system", "content": system_prompt_general()}]
         messages.extend(few_shot_examples())
@@ -131,7 +132,7 @@ def run_single_strategy(
             {
                 "role": "user",
                 "content": user_prompt_mcq(stem, options, scenario)
-                + "\n\n请给出初步答案，并附 2-4 条简短依据。最后一行输出：INITIAL: X（X 为 A/B/C/D）。",
+                + "\n\nGive an initial answer with 2-4 short reasons. On the final line output: INITIAL: X (where X is A/B/C/D).",
             },
         ]
         calls.append(_call(llm, messages1, temperature, max_tokens, seed, call_name="self_reflection_round1"))
@@ -139,10 +140,11 @@ def run_single_strategy(
         init_pick = extract_pick(raw1)
 
         # Call 2: reflect + final
-        # IMPORTANT: round2 必须携带原题与选项，否则模型会反复索要信息，导致变慢/产生 None/触发重试。
-        # 这里用“同一对话的复盘”格式：user 提供原题 -> assistant 给出初答 -> user 要求复核并只输出 FINAL。
+        # IMPORTANT: round 2 must include the original question and options;
+        # otherwise the model may ask for missing context, become slower, or
+        # return None and trigger retries.
         question_prompt = user_prompt_mcq(stem, options, scenario)
-        init_pick_str = init_pick or "（未抽取到）"
+        init_pick_str = init_pick or "(not extracted)"
         messages2 = [
             {"role": "system", "content": system_prompt_general()},
             {"role": "user", "content": question_prompt},
@@ -153,10 +155,11 @@ def run_single_strategy(
             {
                 "role": "user",
                 "content": (
-                    "请复核你刚才的初步答案：先严格检查题目中的硬约束 must（不满足的选项必须淘汰），"
-                    "再在剩余选项中按偏好选择最优。"
-                    "如果初步答案不对，请纠正。\n\n"
-                    "要求：不要输出解释或多余文字；只输出一行：FINAL: X（X 为 A/B/C/D）。"
+                    "Review your initial answer carefully. First enforce the hard constraints (`must`) "
+                    "and eliminate any violating options. Then choose the best remaining option using the "
+                    "soft preferences. If your initial answer was wrong, correct it.\n\n"
+                    "Requirement: do not output explanations or extra text; output exactly one line: "
+                    "FINAL: X (where X is A/B/C/D)."
                 ),
             },
         ]
@@ -167,8 +170,11 @@ def run_single_strategy(
 
     if strategy == "fashionprompt":
         sys_fp = (
-            "你是资深服装面料/材料决策助手。你会严格按硬约束 must 先淘汰，再按软偏好 prefer 综合权衡。\n"
-            "请严格遵守用户给出的结构化输出要求，尤其是第一行必须为 FINAL: X（X 为 A/B/C/D）。"
+            "You are an experienced apparel fabric/material decision assistant. "
+            "Strictly eliminate options that violate hard constraints (`must`) "
+            "before trading off soft preferences (`prefer`).\n"
+            "Follow the required output format exactly, especially the first line: "
+            "FINAL: X (where X is A/B/C/D)."
         )
         messages = [
             {"role": "system", "content": sys_fp},

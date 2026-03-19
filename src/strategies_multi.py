@@ -13,11 +13,11 @@ OptionKey = str  # "A"/"B"/"C"/"D"
 
 
 ROLES: List[Tuple[str, str]] = [
-    ("textile", "面料工程师（Textile Engineer）：关注拒水/透气/耐磨/手感等性能与材料可行性。"),
-    ("technical", "工艺/版型技术（Technical/Process）：关注工艺可实现性、耐用性、洗护与穿着体验风险。"),
-    ("sourcing", "采购供应链（Sourcing/Supply Chain）：关注成本、交期、供货稳定性与可替代性。"),
-    ("product", "产品经理/买手（Product/Merchandiser）：关注用户体验、定位、卖点与整体权衡。"),
-    ("compliance", "合规与可持续（Compliance/Sustainability）：关注 PFAS-free 等合规与可持续风险。"),
+    ("textile", "Textile Engineer: focuses on water repellency, breathability, abrasion, handfeel, and material feasibility."),
+    ("technical", "Technical/Process Specialist: focuses on manufacturability, durability, care requirements, and wear comfort risks."),
+    ("sourcing", "Sourcing/Supply Chain: focuses on cost, lead time, supply stability, and substitutability."),
+    ("product", "Product/Merchandising: focuses on user experience, positioning, selling points, and overall trade-offs."),
+    ("compliance", "Compliance/Sustainability: focuses on PFAS-free requirements and other compliance or sustainability risks."),
 ]
 
 WEIGHTS_OUTDOOR = {"textile": 0.40, "compliance": 0.20, "technical": 0.15, "product": 0.15, "sourcing": 0.10}
@@ -26,17 +26,18 @@ WEIGHTS_WINTER = {"textile": 0.35, "technical": 0.20, "product": 0.20, "sourcing
 _RE_PICK = re.compile(r"\b([ABCD])\b")
 _RE_RANKING = re.compile(r"ranking\s*:\s*([ABCD])\s*>\s*([ABCD])\s*>\s*([ABCD])\s*>\s*([ABCD])", re.I)
 
-# 多角色并发（可选加速）：
-# - 默认 1：保持“串行调用”的基线行为（更稳定、限流风险更低、便于复现实验）
-# - 如需加速（仅减少 wall time，不改变算法/结果理论上应一致），可设置环境变量：
-#     MULTI_ROLE_PARALLELISM=3  （常用）
-#     MULTI_ROLE_PARALLELISM=5  （全并发：更快但更容易触发限流/网络波动）
+# Optional multi-role parallelism:
+# - Default `1`: keeps the serial baseline behavior for stability, lower rate-limit
+#   risk, and easier reproducibility.
+# - To reduce wall time without changing the algorithm, set for example:
+#     MULTI_ROLE_PARALLELISM=3
+#     MULTI_ROLE_PARALLELISM=5
 def _multi_role_parallelism() -> int:
     try:
         v = int(os.getenv("MULTI_ROLE_PARALLELISM", "1"))
     except Exception:
         v = 1
-    # 1~8 之间
+    # Keep it in a conservative range.
     return max(1, min(8, v))
 
 
@@ -44,13 +45,13 @@ def _safe_json(text: str) -> Optional[Dict[str, Any]]:
     if not text:
         return None
     t = text.strip()
-    # 直接 JSON
+    # Direct JSON
     if t.startswith("{") and t.endswith("}"):
         try:
             return json.loads(t)
         except Exception:
             pass
-    # 抽取首个 {...}
+    # Extract the first {...} block
     try:
         i = t.index("{")
         j = t.rindex("}")
@@ -62,7 +63,7 @@ def _safe_json(text: str) -> Optional[Dict[str, Any]]:
 def _parse_agent_decision(text: str) -> Dict[str, Any]:
     t0 = (text or "").strip()
     if t0.startswith("[LLM_ERROR]"):
-        # 明确标记调用失败：不要默认 pick='A'，否则会污染投票/加权的统计结果
+        # Mark failed calls explicitly so we do not silently bias aggregation.
         return {
             "pick": None,
             "confidence": 0.0,
@@ -107,16 +108,22 @@ def _parse_agent_decision(text: str) -> Dict[str, Any]:
 
 def _agent_system_prompt(role_desc: str) -> str:
     return (
-        "你是资深服装面料/材料决策专家。你会严格按硬约束 must 先淘汰，再按软偏好 prefer 综合权衡。\n\n"
+        "You are an experienced apparel fabric/material decision expert. "
+        "Strictly eliminate options that violate hard constraints (`must`) "
+        "before trading off soft preferences (`prefer`).\n\n"
         + role_desc
-        + "\n\n你必须只输出一个 JSON 对象，且不能包含任何额外文本（包括代码块围栏）。键必须包含：pick, confidence, must_fail, reasons, risk_notes。\n"
-        + "其中：\n"
+        + "\n\nYou must output exactly one JSON object and no extra text "
+        + "(including no code fences). Required keys: pick, confidence, "
+        + "must_fail, reasons, risk_notes.\n"
+        + "Definitions:\n"
         + "- pick: A/B/C/D\n"
-        + "- confidence: 0.0~1.0\n"
-        + "- must_fail: 你所选 pick 是否违反 must（若不确定，宁可标记 true 并在 reasons 说明）\n"
-        + "- reasons: 3-6 条\n"
-        + "- risk_notes: 1-4 条\n"
-        + "额外要求：reasons 的第一条请给出全排序，格式严格为：ranking: A>B>C>D（用于 Borda 聚合）。"
+        + "- confidence: 0.0-1.0\n"
+        + "- must_fail: whether your selected pick violates a `must` constraint "
+        + "(if unsure, prefer `true` and explain in `reasons`)\n"
+        + "- reasons: 3-6 items\n"
+        + "- risk_notes: 1-4 items\n"
+        + "Extra requirement: the first item in `reasons` must provide a full "
+        + "ranking in this exact format: ranking: A>B>C>D (used for Borda aggregation)."
     )
 
 
@@ -124,7 +131,7 @@ def _agent_user_prompt(question: Mapping[str, Any]) -> str:
     scenario = str(question["scenario"])
     stem = str(question["stem"])
     options = question["options"]
-    return stem + "\n\n候选如下：\n" + format_options(options, scenario) + "\n\n请严格只输出 JSON。"
+    return stem + "\n\nCandidates:\n" + format_options(options, scenario) + "\n\nOutput JSON only."
 
 
 def _call_agent(
@@ -172,7 +179,7 @@ def _aggregate_voting(decisions: Mapping[str, Dict[str, Any]]) -> Tuple[Optional
         conf_sum[pick] += float(d.get("confidence", 0.5))
 
     if sum(counts.values()) == 0:
-        # 全部 must_fail：退化为计数（不忽略）
+        # If all votes are must-fail, fall back to raw counting.
         for d in decisions.values():
             pick = d.get("pick")
             if pick not in ("A", "B", "C", "D"):
@@ -181,7 +188,7 @@ def _aggregate_voting(decisions: Mapping[str, Dict[str, Any]]) -> Tuple[Optional
             conf_sum[pick] += float(d.get("confidence", 0.5))
 
     if sum(counts.values()) == 0:
-        # 仍然没有有效 pick（例如全是 llm_error）：返回 None
+        # Still no valid pick (for example all are llm_error): return None.
         return None, {k: 0.0 for k in ("A", "B", "C", "D")}
 
     best = max(
@@ -189,7 +196,7 @@ def _aggregate_voting(decisions: Mapping[str, Dict[str, Any]]) -> Tuple[Optional
         key=lambda k: (
             counts[k],
             conf_sum[k],
-            -ord(k),  # tie-break：字母越靠前越优
+            -ord(k),  # tie-break: earlier letter wins
         ),
     )
     total = sum(counts.values()) or 1.0
@@ -209,7 +216,7 @@ def _aggregate_weighted(decisions: Mapping[str, Dict[str, Any]], role_weights: M
         scores[pick] += w * float(d.get("confidence", 0.5))
 
     if sum(scores.values()) == 0:
-        # 若全部被 must_fail 过滤，退化为不忽略 must_fail
+        # If everything was filtered out, fall back to ignoring `must_fail`.
         for role, d in decisions.items():
             pick = d.get("pick")
             if pick not in ("A", "B", "C", "D"):
@@ -243,7 +250,7 @@ def _aggregate_borda(decisions: Mapping[str, Dict[str, Any]], role_weights: Mapp
             for i, opt in enumerate(ranking):
                 scores[opt] += w * points[i]
         else:
-            # fallback：只给 pick 最高分
+            # Fallback: award only the selected pick.
             pick = d.get("pick")
             if pick in ("A", "B", "C", "D"):
                 scores[pick] += w * points[0]
@@ -273,7 +280,7 @@ def run_multi_strategy(
     seed: Optional[int] = None,
 ) -> Dict[str, Any]:
     """
-    多智能体策略入口。
+    Entry point for multi-agent strategies.
     """
 
     scenario = str(question["scenario"])
@@ -295,7 +302,7 @@ def run_multi_strategy(
                 calls.append(call_rec)
             return
 
-        # 并发调用：先收集结果，再按 ROLES 顺序写入（保证日志稳定）
+        # Collect concurrent results first, then append them in stable role order.
         tmp: Dict[str, Tuple[Dict[str, Any], Dict[str, Any]]] = {}
         with ThreadPoolExecutor(max_workers=min(par, len(selected))) as ex:
             futs = {
@@ -307,7 +314,8 @@ def run_multi_strategy(
                 try:
                     d, call_rec = fut.result()
                 except Exception as e:
-                    # 极端情况下（线程/客户端异常），降级为一次 LLM_ERROR 记录，避免整题崩掉
+                    # Extreme fallback: convert thread/client exceptions into a
+                    # synthetic LLM_ERROR record so the whole question does not crash.
                     msg = f"[LLM_ERROR] exception in multi-role call: {type(e).__name__}: {e}"
                     d = {
                         "pick": None,
@@ -365,7 +373,7 @@ def run_multi_strategy(
         }
 
     if strategy == "garmentagents_adaptive":
-        # 先调用权重最高的 3 个角色。
+        # Call the top-3 weighted roles first.
         sorted_roles = sorted(role_weights.items(), key=lambda kv: kv[1], reverse=True)
         r1_roles = [kv[0] for kv in sorted_roles[:3]]
         r2_roles = [r for r, _ in ROLES if r not in r1_roles]
@@ -374,7 +382,7 @@ def run_multi_strategy(
         pick1, dist1 = _aggregate_weighted(decisions, role_weights=role_weights)
         top1, gap = _top1_gap(dist1)
 
-        # 共识已经足够稳定时直接早停。
+        # Stop early once the consensus is sufficiently stable.
         if top1 >= 0.70 or gap >= 0.25:
             return {
                 "pick": pick1,
@@ -390,7 +398,7 @@ def run_multi_strategy(
                 },
             }
 
-        # 需要时再补齐剩余角色。
+        # Otherwise query the remaining roles.
         call_roles(r2_roles, round_name="r2")
         pick2, dist2 = _aggregate_weighted(decisions, role_weights=role_weights)
         top1b, gapb = _top1_gap(dist2)

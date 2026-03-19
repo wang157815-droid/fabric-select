@@ -7,7 +7,7 @@ class TestScoring(unittest.TestCase):
     def test_check_must(self):
         rules = {
             "must": [
-                {"field": "water_repellency", "op": "gte", "value": 4, "reason": "拒水>=4"},
+                {"field": "water_repellency", "op": "gte", "value": 4, "reason": "water_repellency>=4"},
                 {"field": "compliance.pfas_free", "op": "eq", "value": True, "reason": "PFAS-free"},
             ]
         }
@@ -20,7 +20,7 @@ class TestScoring(unittest.TestCase):
 
         ok2, fails2 = check_must(bad_cand, rules)
         self.assertFalse(ok2)
-        self.assertIn("拒水>=4", fails2)
+        self.assertIn("water_repellency>=4", fails2)
 
     def test_score_candidate_order(self):
         rules = {

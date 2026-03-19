@@ -1,0 +1,208 @@
+{
+  "report": {
+    "scenario": "outdoor_dwr_windbreaker",
+    "n_catalog": 20,
+    "n_questions": 200,
+    "attempts": 1120,
+    "accept_rate": 0.17857142857142858,
+    "min_margin": 0.02,
+    "margin_median": 0.19166666666666665,
+    "must_usage": {
+      "Water repellency must be at least 3/5": 165,
+      "Weight must not exceed 150 gsm": 118,
+      "Weight must not exceed 120 gsm (lightweight requirement)": 82,
+      "Water repellency must be at least 4/5": 35
+    },
+    "catalog_csv": "data\\real_validation\\outdoor_catalog.csv",
+    "rules_path": "configs\\rules_outdoor.json",
+    "min_coverage": 0.3,
+    "derive_ordinals": true
+  },
+  "derived": {
+    "water_repellency": {
+      "from": "water_repellency_raw",
+      "direction": "high",
+      "n_raw": 9,
+      "imputed": 9,
+      "cuts": [
+        2000.0,
+        2000.0,
+        4000.0,
+        4000.0
+      ]
+    }
+  },
+  "dropped": {
+    "must": [
+      {
+        "field": "compliance.pfas_free",
+        "op": "eq",
+        "value": true,
+        "reason": "PFAS-free is required (compliance/sustainability)",
+        "coverage": 0.0
+      },
+      {
+        "field": "abrasion",
+        "op": "gte",
+        "value": 3,
+        "reason": "Abrasion resistance must be at least 3/5 (outdoor use)",
+        "coverage": 0.0
+      }
+    ],
+    "prefer": [
+      {
+        "field": "breathability",
+        "weight": 0.18,
+        "direction": "high",
+        "normalization": {
+          "type": "ordinal",
+          "levels": [
+            1,
+            2,
+            3,
+            4,
+            5
+          ]
+        },
+        "reason": "Higher breathability and comfort",
+        "coverage": 0.0
+      },
+      {
+        "field": "abrasion",
+        "weight": 0.15,
+        "direction": "high",
+        "normalization": {
+          "type": "ordinal",
+          "levels": [
+            1,
+            2,
+            3,
+            4,
+            5
+          ]
+        },
+        "reason": "Better abrasion resistance and durability",
+        "coverage": 0.0
+      },
+      {
+        "field": "handfeel_noise",
+        "weight": 0.1,
+        "direction": "high",
+        "normalization": {
+          "type": "ordinal",
+          "levels": [
+            1,
+            2,
+            3,
+            4,
+            5
+          ]
+        },
+        "reason": "Quieter with better handfeel (combined noise/handfeel score; higher is better)",
+        "coverage": 0.0
+      },
+      {
+        "field": "cost_level",
+        "weight": 0.15,
+        "direction": "low",
+        "normalization": {
+          "type": "ordinal",
+          "levels": [
+            1,
+            2,
+            3,
+            4,
+            5
+          ]
+        },
+        "reason": "Lower cost (1=low cost, 5=high cost)",
+        "coverage": 0.0
+      },
+      {
+        "field": "lead_time_level",
+        "weight": 0.12,
+        "direction": "low",
+        "normalization": {
+          "type": "ordinal",
+          "levels": [
+            1,
+            2,
+            3,
+            4,
+            5
+          ]
+        },
+        "reason": "Shorter lead time (1=short lead time, 5=long lead time)",
+        "coverage": 0.0
+      }
+    ],
+    "tie_breakers": [
+      {
+        "field": "breathability",
+        "direction": "high",
+        "coverage": 0.0
+      },
+      {
+        "field": "cost_level",
+        "direction": "low",
+        "coverage": 0.0
+      },
+      {
+        "field": "lead_time_level",
+        "direction": "low",
+        "coverage": 0.0
+      }
+    ]
+  },
+  "rules_used": {
+    "version": 1,
+    "scenario": "outdoor_dwr_windbreaker",
+    "must": [
+      {
+        "field": "water_repellency",
+        "op": "gte",
+        "value": 4,
+        "reason": "Water repellency must be at least 4/5"
+      }
+    ],
+    "prefer": [
+      {
+        "field": "water_repellency",
+        "weight": 0.6666666666666666,
+        "direction": "high",
+        "normalization": {
+          "type": "ordinal",
+          "levels": [
+            1,
+            2,
+            3,
+            4,
+            5
+          ]
+        },
+        "reason": "Stronger water repellency"
+      },
+      {
+        "field": "weight_gsm",
+        "weight": 0.3333333333333333,
+        "direction": "low",
+        "normalization": {
+          "type": "minmax",
+          "min": 60,
+          "max": 180
+        },
+        "reason": "Lower weight (lower gsm is better)"
+      }
+    ],
+    "tie_breakers": [
+      {
+        "field": "water_repellency",
+        "direction": "high"
+      },
+      {
+        "field": "id",
+        "direction": "low"
+      }
+    ]
+  }
+}

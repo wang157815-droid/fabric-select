@@ -10,6 +10,10 @@ param(
   [int]$ProgressEvery = 25,
   [string[]]$Scenarios = @("outdoor_dwr_windbreaker", "winter_warm_midlayer"),
   [string[]]$Strategies = @(
+    "nonllm_feasible_random",
+    "nonllm_simple_heuristic",
+    "nonllm_topsis",
+    "nonllm_vikor",
     "zero_shot",
     "few_shot",
     "cot_few_shot",
@@ -25,7 +29,7 @@ param(
 
 $ErrorActionPreference = "Stop"
 
-# 多智能体策略并发度（voting/weighted/borda/garmentagents*）
+# Multi-agent strategy parallelism (voting/weighted/borda/garmentagents*)
 $env:MULTI_ROLE_PARALLELISM = "$MultiRoleParallelism"
 
 Write-Host "Running main matrix..."

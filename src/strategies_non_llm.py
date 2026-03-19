@@ -24,12 +24,51 @@ _RULES_OUTDOOR = json.loads(Path("configs/rules_outdoor.json").read_text(encodin
 _RULES_WINTER = json.loads(Path("configs/rules_winter.json").read_text(encoding="utf-8"))
 
 
+def _cond_key(cond: Mapping[str, Any]) -> Tuple[str, str, str]:
+    return (
+        str(cond.get("field")),
+        str(cond.get("op", "eq")),
+        json.dumps(cond.get("value"), ensure_ascii=False, sort_keys=True),
+    )
+
+
+def _u(s: str) -> str:
+    return s.encode("ascii").decode("unicode_escape")
+
+
+_LEGACY_REASON_ALIASES: Dict[Tuple[str, str, str], List[str]] = {
+    ("compliance.pfas_free", "eq", "true"): [_u(r"\u5fc5\u987b PFAS-free\uff08\u5408\u89c4/\u53ef\u6301\u7eed\uff09")],
+    ("water_repellency", "gte", "4"): [_u(r"\u62d2\u6c34/\u9632\u6cfc\u7b49\u7ea7\u81f3\u5c11 4/5")],
+    ("water_repellency", "gte", "3"): [_u(r"\u62d2\u6c34/\u9632\u6cfc\u7b49\u7ea7\u81f3\u5c11 3/5")],
+    ("abrasion", "gte", "3"): [_u(r"\u8010\u78e8\u7b49\u7ea7\u81f3\u5c11 3/5\uff08\u6237\u5916\u4f7f\u7528\u5f3a\u5ea6\uff09")],
+    ("abrasion", "gte", "4"): [_u(r"\u8010\u78e8\u7b49\u7ea7\u81f3\u5c11 4/5\uff08\u9ad8\u5f3a\u5ea6\u6237\u5916\uff09")],
+    ("breathability", "gte", "3"): [_u(r"\u900f\u6c14\u7b49\u7ea7\u81f3\u5c11 3/5")],
+    ("weight_gsm", "lte", "120"): [_u(r"\u514b\u91cd\u4e0d\u8d85\u8fc7 120gsm\uff08\u8f7b\u91cf\u5316\uff09")],
+    ("weight_gsm", "lte", "150"): [_u(r"\u514b\u91cd\u4e0d\u8d85\u8fc7 150gsm")],
+    ("lead_time_level", "lte", "3"): [
+        _u(r"\u4ea4\u671f\u7b49\u7ea7\u4e0d\u8d85\u8fc7 3\uff08\u5feb\u901f\u4e0a\u5e02\uff09"),
+        _u(r"\u4ea4\u671f\u7b49\u7ea7\u4e0d\u8d85\u8fc7 3"),
+    ],
+    ("cost_level", "lte", "3"): [_u(r"\u6210\u672c\u7b49\u7ea7\u4e0d\u8d85\u8fc7 3\uff08\u9884\u7b97\u7ea6\u675f\uff09")],
+    ("care.machine_wash", "eq", "true"): [_u(r"\u5fc5\u987b\u53ef\u673a\u6d17\uff08\u62a4\u7406\u7ea6\u675f\uff09")],
+    ("loft_or_clo", "gte", "1.2"): [_u(r"\u4fdd\u6696\u6307\u6807\uff08loft/clo\uff09\u81f3\u5c11 1.2")],
+    ("loft_or_clo", "gte", "1.5"): [_u(r"\u4fdd\u6696\u6307\u6807\uff08loft/clo\uff09\u81f3\u5c11 1.5\uff08\u9ad8\u4fdd\u6696\uff09")],
+    ("moisture_management", "gte", "3"): [_u(r"\u6392\u6c57/\u5feb\u5e72\u80fd\u529b\u81f3\u5c11 3/5")],
+    ("moisture_management", "gte", "4"): [_u(r"\u6392\u6c57/\u5feb\u5e72\u80fd\u529b\u81f3\u5c11 4/5\uff08\u9ad8\u8fd0\u52a8\u5f3a\u5ea6\uff09")],
+    ("wind_blocking", "gte", "3"): [_u(r"\u6297\u98ce\u7b49\u7ea7\u81f3\u5c11 3/5")],
+    ("bulk_weight", "lte", "3"): [_u(r"\u81c3\u80bf\u5ea6\u4e0d\u8d85\u8fc7 3\uff08\u8f7b\u8584\u8981\u6c42\uff09")],
+    ("cost_level", "lte", "4"): [_u(r"\u6210\u672c\u7b49\u7ea7\u4e0d\u8d85\u8fc7 4")],
+}
+
+
 def _reason_to_must_cond_map() -> Dict[str, Dict[str, Any]]:
     """
-    将题目 meta.must_sample（中文 reason 文本）映射回 must 条件配置。
-    这些模板来自数据生成脚本 `dataset_v1.py`，保证与题目一致。
+    Map `question.meta.must_sample` reason text back to must-condition configs.
+
+    These templates come from `dataset_v1.py` so the mapping stays consistent
+    with generated questions.
     """
-    # 延迟导入，避免不必要的重 import 成本
+    # Delay the import to avoid unnecessary startup cost.
     from . import dataset_v1 as dv1  # local import
 
     m: Dict[str, Dict[str, Any]] = {}
@@ -37,6 +76,8 @@ def _reason_to_must_cond_map() -> Dict[str, Dict[str, Any]]:
         reason = str(cond.get("reason") or "").strip()
         if reason:
             m[reason] = dict(cond)
+        for alias in _LEGACY_REASON_ALIASES.get(_cond_key(cond), []):
+            m[str(alias).strip()] = dict(cond)
     return m
 
 
@@ -68,7 +109,7 @@ def _feasible_keys(question: Mapping[str, Any]) -> List[OptionKey]:
 
 
 def _stable_seed(question_id: str) -> int:
-    # Python hash 会随进程随机化；这里用 crc32 保证跨进程稳定
+    # Python's built-in hash is process-randomized; crc32 is stable across runs.
     return int(zlib.crc32(question_id.encode("utf-8"))) & 0x7FFFFFFF
 
 
@@ -258,8 +299,11 @@ def _pick_feasible_random(question: Mapping[str, Any], *, rng: random.Random) ->
 
 def _pick_simple_heuristic(question: Mapping[str, Any]) -> OptionKey:
     """
-    非LLM朴素启发式（不使用 oracle_scores，也不复刻完整 prefer 权重）。
-    逻辑：先 must 过滤，再用少量关键字段做字典序排序。
+    Simple non-LLM heuristic.
+
+    It does not use `oracle_scores` and does not reproduce the full preference
+    weighting. The logic is: filter by `must`, then sort lexicographically by a
+    small set of key fields.
     """
     scenario = str(question.get("scenario") or "")
     feasible = _feasible_keys(question)
@@ -287,7 +331,7 @@ def _pick_simple_heuristic(question: Mapping[str, Any]) -> OptionKey:
                 _int(o.get("water_repellency")),  # high better
                 _int(o.get("breathability")),  # high better
                 _int(o.get("abrasion")),  # high better
-                _int(o.get("handfeel_noise")),  # high better（按数据集定义）
+                _int(o.get("handfeel_noise")),  # high is better per dataset definition
                 -_float(o.get("weight_gsm"), default=1e9),  # low better
                 -_int(o.get("cost_level"), default=999),  # low better
                 -_int(o.get("lead_time_level"), default=999),  # low better
@@ -319,10 +363,10 @@ def run_non_llm_strategy(
     seed: Optional[int] = None,
 ) -> Dict[str, Any]:
     """
-    返回结构与 LLM 策略保持一致：
+    Return a structure aligned with the LLM strategy output format:
       - pick: A/B/C/D
       - calls: []
-      - raw_output: 用 JSON 记录可复核信息（不占太大体积）
+      - raw_output: compact JSON with auditable details
     """
     if strategy not in NON_LLM_STRATEGIES:
         raise ValueError(f"Unknown non-LLM strategy: {strategy}")

@@ -34,30 +34,31 @@ def _must_text(rules: Mapping[str, Any]) -> str:
     parts = []
     for c in rules.get("must", []):
         parts.append(c.get("reason") or f"{c.get('field')} {c.get('op')} {c.get('value')}")
-    return "；".join(parts) if parts else "（无）"
+    return "; ".join(parts) if parts else "(none)"
 
 
 def _prefer_text(rules: Mapping[str, Any]) -> str:
     parts = []
     for p in rules.get("prefer", []):
         parts.append(p.get("reason") or p.get("field"))
-    return "；".join(parts) if parts else "（无）"
+    return "; ".join(parts) if parts else "(none)"
 
 
 def _scenario_stem(scenario: str, rules: Mapping[str, Any]) -> str:
     if scenario == "outdoor_dwr_windbreaker":
         return (
-            "任务：为“户外轻量防泼风衣（DWR windbreaker）”选择最合适的面料。\n"
-            f"硬约束（must）：{_must_text(rules)}。\n"
-            f"软偏好（prefer，加权）：{_prefer_text(rules)}。\n"
-            "请在 4 个候选（A/B/C/D）中选出最合适的一项。"
+            'Task: select the most suitable fabric for a lightweight outdoor DWR windbreaker.\n'
+            f"Hard constraints (must): {_must_text(rules)}.\n"
+            f"Soft preferences (prefer, weighted): {_prefer_text(rules)}.\n"
+            "Choose the best option among the four candidates (A/B/C/D)."
         )
     if scenario == "winter_warm_midlayer":
         return (
-            "任务：为“冬季保暖中层（合成保暖/抓绒 midlayer）”选择最合适的面料/材料方案。\n"
-            f"硬约束（must）：{_must_text(rules)}。\n"
-            f"软偏好（prefer，加权）：{_prefer_text(rules)}。\n"
-            "请在 4 个候选（A/B/C/D）中选出最合适的一项。"
+            "Task: select the most suitable fabric/material option for a winter warm midlayer "
+            "(synthetic insulation or fleece).\n"
+            f"Hard constraints (must): {_must_text(rules)}.\n"
+            f"Soft preferences (prefer, weighted): {_prefer_text(rules)}.\n"
+            "Choose the best option among the four candidates (A/B/C/D)."
         )
     raise ValueError(f"Unknown scenario: {scenario}")
 
@@ -78,7 +79,7 @@ def _value_for_direction(v: Any, direction: str) -> float:
     try:
         return float(v)
     except Exception:
-        # 字符串等：退化为 0
+        # Strings and other non-numeric values fall back to 0.
         return 0.0
 
 
@@ -93,11 +94,11 @@ def _make_key_rationales(
 
     ok, _fails = check_must(best, rules)
     if ok:
-        rationales.append("正确选项满足所有硬约束（must）。")
+        rationales.append("The correct option satisfies all hard constraints (`must`).")
     else:
-        rationales.append("正确选项在硬约束上风险较低（相对其他候选更符合 must）。")
+        rationales.append("The correct option carries lower hard-constraint risk and is more compatible with the `must` conditions than the alternatives.")
 
-    # 按权重从高到低挑选“正确选项占优”的 prefer
+    # Prioritize `prefer` fields where the correct option has the clearest edge.
     prefs = sorted(rules.get("prefer", []), key=lambda x: float(x.get("weight", 0.0)), reverse=True)
     for p in prefs:
         field = p["field"]
@@ -105,14 +106,14 @@ def _make_key_rationales(
         reason = p.get("reason") or field
 
         best_v = _value_for_direction(best.get(field) if "." not in field else None, direction)
-        # 支持嵌套字段
+        # Support nested fields.
         if "." in field:
             cur: Any = best
             for part in field.split("."):
                 cur = cur.get(part) if isinstance(cur, dict) else None
             best_v = _value_for_direction(cur, direction)
 
-        # 找该指标上的“最优项”
+        # Find the winner on this specific field.
         winner = None
         winner_v = None
         for k, c in options.items():
@@ -132,7 +133,7 @@ def _make_key_rationales(
                     winner, winner_v = k, v2
 
         if winner == answer_key:
-            # 给出可解释的数值提示（若为整数等级则显示 /5）
+            # Provide an interpretable value hint; show `/5` for ordinal scores.
             show_val = None
             cur3: Any = best
             if "." in field:
@@ -142,36 +143,39 @@ def _make_key_rationales(
                 cur3 = best.get(field)
             show_val = cur3
             if isinstance(show_val, int) and show_val in (1, 2, 3, 4, 5):
-                rationales.append(f"在“{reason}”上表现更好（{field}={show_val}/5），综合得分占优。")
+                rationales.append(f"It performs better on '{reason}' ({field}={show_val}/5), which improves the overall score.")
             else:
-                rationales.append(f"在“{reason}”上表现更好（{field}={show_val}），综合得分占优。")
+                rationales.append(f"It performs better on '{reason}' ({field}={show_val}), which improves the overall score.")
 
         if len(rationales) >= 4:
             break
 
-    # 解释三类干扰项
+    # Explain the three distractor types.
     for k, tags in option_tags.items():
         if "must_fail" in tags:
             ok2, fails = check_must(options[k], rules)
             if not ok2 and fails:
-                rationales.append(f"干扰项 {k} 违反硬约束：{fails[0]}。")
+                rationales.append(f"Distractor {k} violates a hard constraint: {fails[0]}.")
             else:
-                rationales.append(f"干扰项 {k} 违反硬约束（must）。")
+                rationales.append(f"Distractor {k} violates a hard constraint (`must`).")
         if "cost_leadtime_worse" in tags:
             c = options[k]
             rationales.append(
-                f"干扰项 {k} 性能尚可但成本/交期更差（cost_level={c.get('cost_level')}，lead_time_level={c.get('lead_time_level')}）。"
+                f"Distractor {k} is acceptable on performance but worse on cost/lead time "
+                f"(cost_level={c.get('cost_level')}, lead_time_level={c.get('lead_time_level')})."
             )
         if "soft_worse" in tags:
-            rationales.append(f"干扰项 {k} 满足 must 但关键软指标明显更弱，综合评分更低。")
+            rationales.append(
+                f"Distractor {k} satisfies `must` but is clearly weaker on key soft criteria, leading to a lower overall score."
+            )
 
-    # 去重并裁剪到 3-6 条
+    # Deduplicate and keep 3-6 items.
     dedup: List[str] = []
     for r in rationales:
         if r not in dedup:
             dedup.append(r)
 
-    return dedup[:6] if len(dedup) >= 3 else (dedup + ["综合权衡后该选项更合适。"])[:3]
+    return dedup[:6] if len(dedup) >= 3 else (dedup + ["Overall, this option is the most suitable after balancing the criteria."])[:3]
 
 
 def _precompute(catalog: List[Dict[str, Any]], rules: Mapping[str, Any]) -> List[Dict[str, Any]]:
@@ -205,7 +209,7 @@ def _gen_one_question(
     soft_pool = [c for c in must_ok if c["_score"] <= median_score]
     cost_pool = [c for c in must_ok if _is_cost_or_leadtime_bad(c) and c["_score"] >= median_score]
 
-    # 保底：若 pool 不够，再放宽一点
+    # Fallback: if a pool is empty, relax the selection slightly.
     if not cost_pool:
         cost_pool = [c for c in must_ok if _is_cost_or_leadtime_bad(c)]
     if not soft_pool:
@@ -219,7 +223,7 @@ def _gen_one_question(
         bad_soft = rng.choice([c for c in soft_pool if c["id"] != good["id"]] or soft_pool)
         bad_cost = rng.choice([c for c in cost_pool if c["id"] not in (good["id"], bad_soft["id"])] or cost_pool)
 
-        # 确保三类干扰项确实“打不过”正确项
+        # Ensure all three distractor types are genuinely worse than the correct option.
         if float(bad_soft["_score"]) > good_score - 0.10:
             continue
         if float(bad_cost["_score"]) > good_score - 0.03:
@@ -245,7 +249,7 @@ def _gen_one_question(
 
         best_key, scores = pick_best(options, rules)
         if best_key != keys[0]:
-            # 纠正：保证“best”确实是标准答案，满足干扰项定义
+            # Enforce that the designated "best" item is truly the oracle answer.
             continue
 
         stem = _scenario_stem(scenario, rules)
@@ -289,16 +293,16 @@ def generate_questions_for_scenario(
     return out
 
 
-app = typer.Typer(add_completion=False, help="从 catalog 生成 MCQ 题库（含规则评分器 ground truth）。")
+app = typer.Typer(add_completion=False, help="Generate MCQ question sets from catalogs with rule-based ground truth.")
 
 
 @app.command()
 def main(
-    seed: int = typer.Option(42, help="随机种子（保证可复现）"),
-    n_outdoor: int = typer.Option(200, "--n-outdoor", help="outdoor 题目数量"),
-    n_winter: int = typer.Option(200, "--n-winter", help="winter 题目数量"),
-    data_dir: Path = typer.Option(Path("data"), help="数据目录（包含 catalog_* 与输出 questions.jsonl）"),
-    config_dir: Path = typer.Option(Path("configs"), help="规则配置目录（rules_outdoor.json / rules_winter.json）"),
+    seed: int = typer.Option(42, help="Random seed for reproducibility"),
+    n_outdoor: int = typer.Option(200, "--n-outdoor", help="Number of outdoor questions"),
+    n_winter: int = typer.Option(200, "--n-winter", help="Number of winter questions"),
+    data_dir: Path = typer.Option(Path("data"), help="Data directory containing catalog files and the output questions.jsonl"),
+    config_dir: Path = typer.Option(Path("configs"), help="Rules directory containing rules_outdoor.json and rules_winter.json"),
 ) -> None:
     rng = random.Random(seed)
 

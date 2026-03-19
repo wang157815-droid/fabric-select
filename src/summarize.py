@@ -8,7 +8,9 @@ import typer
 
 def _bh_fdr(pvals: List[float], alpha: float = 0.05) -> List[bool]:
     """
-    Benjamini–Hochberg FDR 控制：返回每个 pval 是否拒绝原假设。
+    Benjamini-Hochberg FDR control.
+
+    Returns whether each p-value rejects the null hypothesis.
     """
 
     m = len(pvals)
@@ -40,6 +42,10 @@ def _safe_filename(s: str) -> str:
 
 def _as_tuple(v: Any) -> Tuple[Any, ...]:
     return v if isinstance(v, tuple) else (v,)
+
+
+def _u(s: str) -> str:
+    return s.encode("ascii").decode("unicode_escape")
 
 
 def _bucket_tag(cols: List[str], vals: Any) -> str:
@@ -84,12 +90,13 @@ def _bucket_title(cols: List[str], vals: Any) -> str:
     return ", ".join(parts)
 
 
-app = typer.Typer(add_completion=False, help="汇总 results.csv，输出统计表与图（可选统计检验）。")
+app = typer.Typer(add_completion=False, help="Summarize results.csv into tables and figures, with optional statistical tests.")
 
 def _read_jsonl_minimal(path: Path) -> Iterable[Dict[str, Any]]:
     """
-    逐行读取 JSONL，返回 dict。
-    - 自动跳过空行与解析失败行。
+    Read a JSONL file line by line and yield dictionaries.
+
+    Empty lines and parse failures are skipped automatically.
     """
     import json
 
@@ -106,8 +113,9 @@ def _read_jsonl_minimal(path: Path) -> Iterable[Dict[str, Any]]:
 
 def _load_questions_meta(questions_jsonl: Path):
     """
-    从 questions_v1_clean.jsonl 提取 paper 分析需要的 meta 字段。
-    返回 pandas.DataFrame：
+    Extract metadata needed for paper analysis from `questions_v1_clean.jsonl`.
+
+    Returns a pandas DataFrame with:
       - question_id, scenario, gold, margin, must_n
       - must_has_cost, must_has_lead, must_has_compliance, must_has_weight, must_has_perf
     """
@@ -123,11 +131,11 @@ def _load_questions_meta(questions_jsonl: Path):
         meta = q.get("meta") or {}
         margin = meta.get("margin", None)
         must_sample = meta.get("must_sample") or []
-        # must_sample 里是中文 reason 文本，做粗粒度关键词分类即可
-        must_text = "；".join([str(x) for x in must_sample if x is not None])
+        # Support both legacy Chinese and new English reason strings.
+        must_text = " ; ".join([str(x) for x in must_sample if x is not None]).lower()
 
         def _has_any(keys: List[str]) -> bool:
-            return any(k in must_text for k in keys)
+            return any(str(k).lower() in must_text for k in keys)
 
         rows.append(
             {
@@ -136,11 +144,32 @@ def _load_questions_meta(questions_jsonl: Path):
                 "gold": gold,
                 "margin": float(margin) if margin is not None else float("nan"),
                 "must_n": int(len(must_sample)),
-                "must_has_cost": _has_any(["成本"]),
-                "must_has_lead": _has_any(["交期"]),
-                "must_has_compliance": _has_any(["PFAS", "合规", "可持续"]),
-                "must_has_weight": _has_any(["克重", "gsm", "臃肿", "bulk"]),
-                "must_has_perf": _has_any(["拒水", "防泼", "透气", "耐磨", "保暖", "排汗", "快干", "抗风", "loft", "clo"]),
+                "must_has_cost": _has_any([_u(r"\u6210\u672c"), "cost", "budget"]),
+                "must_has_lead": _has_any([_u(r"\u4ea4\u671f"), "lead", "launch"]),
+                "must_has_compliance": _has_any(
+                    ["pfas", _u(r"\u5408\u89c4"), _u(r"\u53ef\u6301\u7eed"), "compliance", "sustainability"]
+                ),
+                "must_has_weight": _has_any([_u(r"\u514b\u91cd"), "gsm", _u(r"\u81c3\u80bf"), "bulk", "weight"]),
+                "must_has_perf": _has_any(
+                    [
+                        _u(r"\u62d2\u6c34"),
+                        _u(r"\u9632\u6cfc"),
+                        _u(r"\u900f\u6c14"),
+                        _u(r"\u8010\u78e8"),
+                        _u(r"\u4fdd\u6696"),
+                        _u(r"\u6392\u6c57"),
+                        _u(r"\u5feb\u5e72"),
+                        _u(r"\u6297\u98ce"),
+                        "loft",
+                        "clo",
+                        "water repellency",
+                        "breathability",
+                        "abrasion",
+                        "thermal insulation",
+                        "moisture management",
+                        "wind blocking",
+                    ]
+                ),
             }
         )
     return pd.DataFrame(rows)
@@ -161,8 +190,10 @@ def _extract_seed_from_run_id(run_id: str) -> int:
 
 def _load_log_minimal(log_jsonl: Path):
     """
-    读取 per_question_log.jsonl，并做去重（同一 run_key+question_id 保留 timestamp 最新的一条）。
-    返回 pandas.DataFrame：
+    Read `per_question_log.jsonl` and deduplicate it.
+
+    For the same `run_key + question_id`, keep only the newest timestamp.
+    Returns a pandas DataFrame with:
       - strategy, scenario, temperature, repeat_idx, seed, question_id
       - pred, is_correct, llm_error
       - tokens, latency_s, calls
@@ -225,12 +256,14 @@ def _load_log_minimal(log_jsonl: Path):
 
 def _ensure_strategy_order(strategies: List[str]) -> List[str]:
     """
-    给图/表一个稳定的策略顺序：把 garmentagents_* 放在最后（或按需要突出）。
+    Apply a stable strategy order for figures and tables.
     """
     known = [
         # non-LLM baselines
         "nonllm_feasible_random",
         "nonllm_simple_heuristic",
+        "nonllm_topsis",
+        "nonllm_vikor",
         "zero_shot",
         "few_shot",
         "cot_few_shot",
@@ -250,31 +283,31 @@ def _ensure_strategy_order(strategies: List[str]) -> List[str]:
 
 @app.command()
 def main(
-    results: Path = typer.Option(Path("outputs/results.csv"), help="eval_run 输出的 results.csv"),
-    out_dir: Path = typer.Option(Path("outputs/figs"), help="图表输出目录"),
+    results: Path = typer.Option(Path("outputs/results.csv"), help="results.csv generated by `eval_run`"),
+    out_dir: Path = typer.Option(Path("outputs/figs"), help="Output directory for summary figures and tables"),
     log_jsonl: Optional[Path] = typer.Option(
         None,
         "--log-jsonl",
-        help="可选：per_question_log.jsonl 路径。传入后会计算 valid_output_rate / llm_error_rate 并写入汇总表。",
+        help="Optional path to per_question_log.jsonl. When provided, valid_output_rate and llm_error_rate are added to the summary tables.",
     ),
     questions_jsonl: Optional[Path] = typer.Option(
         None,
         "--questions-jsonl",
-        help="可选：questions.jsonl/questions_v1_clean.jsonl。传入后可生成数据集可信度统计与按难度/约束分组表现。",
+        help="Optional path to questions.jsonl or questions_v1_clean.jsonl. When provided, dataset statistics and grouped accuracy analyses are generated.",
     ),
-    scenario: List[str] = typer.Option([], "--scenario", help="只保留指定场景（可重复指定）。不传则不过滤。"),
-    temperature: List[float] = typer.Option([], "--temperature", help="只保留指定温度（可重复指定；浮点用近似匹配）。不传则不过滤。"),
-    n_questions: List[int] = typer.Option([], "--n-questions", help="只保留指定题数（可重复指定）。不传则不过滤。"),
-    model: List[str] = typer.Option([], "--model", help="只保留指定模型（可重复指定）。不传则不过滤。"),
+    scenario: List[str] = typer.Option([], "--scenario", help="Keep only the specified scenarios; may be passed multiple times."),
+    temperature: List[float] = typer.Option([], "--temperature", help="Keep only the specified temperatures; may be passed multiple times and matched approximately."),
+    n_questions: List[int] = typer.Option([], "--n-questions", help="Keep only the specified question counts; may be passed multiple times."),
+    model: List[str] = typer.Option([], "--model", help="Keep only the specified models; may be passed multiple times."),
     by_config: bool = typer.Option(
         True,
         "--by-config/--no-by-config",
-        help="默认按 (scenario, temperature, n_questions, model) 分桶汇总/出图，避免混合不同实验设置。",
+        help="By default, summarize and plot by (scenario, temperature, n_questions, model) to avoid mixing different experimental settings.",
     ),
     paper: bool = typer.Option(
         False,
         "--paper/--no-paper",
-        help="生成论文常见信息结构的额外图表/表格：overall 总表、成本气泡图、场景分组条形、难度分桶热力图、数据集分布。",
+        help="Generate additional paper-style outputs such as the overall summary table, cost trade-off bubbles, scenario grouped bars, difficulty heatmaps, and dataset distributions.",
     ),
 ) -> None:
     import pandas as pd
@@ -299,7 +332,7 @@ def main(
     if missing:
         raise typer.BadParameter(f"results.csv missing columns: {missing}")
 
-    # 过滤（不传参数则不过滤）
+    # Apply optional filters.
     if scenario:
         df = df[df["scenario"].isin(scenario)]
     if model:
@@ -317,7 +350,7 @@ def main(
         typer.echo("No rows after filtering; nothing to summarize.")
         return
 
-    # 可选：从 per_question_log.jsonl 读取并计算 valid_output_rate / llm_error_rate（并供 paper 分析复用）
+    # Optionally derive valid_output_rate / llm_error_rate from the per-question log.
     log_df = None
     if log_jsonl is not None and Path(log_jsonl).exists():
         log_df = _load_log_minimal(Path(log_jsonl))
@@ -353,7 +386,7 @@ def main(
     bucket_cols = ["scenario", "temperature", "n_questions", "model"] if by_config else ["scenario"]
     group_cols = [*bucket_cols, "strategy"]
 
-    # 汇总表
+    # Main summary table.
     grp = (
         df.groupby(group_cols, dropna=False)
         .agg(
@@ -369,7 +402,7 @@ def main(
         .reset_index()
         .sort_values([*bucket_cols, "acc_mean"], ascending=[*([True] * len(bucket_cols)), False])
     )
-    # 若没有 log_jsonl，则上面 valid_mean/llm_error_mean 是占位（accuracy count）；这里清空，避免误导
+    # If no log file was provided, those columns are only placeholders; drop them.
     if "valid_output_rate" not in df.columns:
         grp = grp.drop(columns=["valid_mean"], errors="ignore")
     else:
@@ -382,7 +415,7 @@ def main(
     grp.to_csv(out_dir / "summary_by_strategy.csv", index=False)
     typer.echo(f"Wrote summary -> {out_dir/'summary_by_strategy.csv'}")
 
-    # 绘图
+    # Plot summaries.
     try:
         import matplotlib.pyplot as plt
     except Exception as e:
@@ -770,12 +803,12 @@ def main(
             except Exception:
                 pass
 
-    # Scatter: tokens vs acc（按 scenario 分图）
+    # Scatter: tokens vs accuracy
     for bucket_vals, sub in grp.groupby(bucket_cols, dropna=False):
         tag = _bucket_tag(bucket_cols, bucket_vals)
         title = _bucket_title(bucket_cols, bucket_vals)
         plt.figure(figsize=(8, 4))
-        # 普通点
+        # Standard scatter points.
         plt.scatter(sub["tokens_mean"], sub["acc_mean"], alpha=0.85)
         offsets = [(6, 6), (6, -6), (-6, 6), (-6, -6), (0, 8), (0, -8)]
         for i, (_, row) in enumerate(sub.iterrows()):
@@ -787,7 +820,7 @@ def main(
                 xytext=(dx, dy),
                 fontsize=8,
             )
-        # 突出 garmentagents_adaptive（early-stop 主要体现在 calls/tokens 低）
+        # Highlight `garmentagents_adaptive` because early-stop mainly reduces calls/tokens.
         try:
             ga = sub[sub["strategy"] == "garmentagents_adaptive"]
             if not ga.empty:
@@ -838,7 +871,7 @@ def main(
 
     typer.echo(f"Wrote figs -> {out_dir}")
 
-    # 统计检验（可选）：Kruskal-Wallis + pairwise Mann-Whitney + BH
+    # Optional statistical tests: Kruskal-Wallis + pairwise Mann-Whitney + BH.
     try:
         from scipy.stats import kruskal, mannwhitneyu, shapiro  # type: ignore
     except Exception as e:
@@ -855,7 +888,7 @@ def main(
         if any(len(g) == 0 for g in groups) or len(groups) < 2:
             continue
 
-        # Shapiro（小样本很不稳定，这里只做记录）
+        # Shapiro is unstable for very small samples; record it only.
         for s, g in zip(strategies, groups):
             if len(g) >= 3:
                 try:
@@ -871,7 +904,7 @@ def main(
             p_kw = float("nan")
         stats_rows.append({**bucket_rec, "test": "kruskal_wallis", "strategy": "ALL", "p": p_kw})
 
-        # Pairwise Mann-Whitney（双侧）
+        # Pairwise Mann-Whitney (two-sided)
         pairs: List[Tuple[str, str]] = []
         pvals: List[float] = []
         for i in range(len(strategies)):
@@ -887,8 +920,8 @@ def main(
                 pairs.append((strategies[i], strategies[j]))
                 pvals.append(p)
 
-        rejects = _bh_fdr([p for p in pvals if p == p], alpha=0.05)  # 过滤 nan 后做 BH
-        # 将 rejects 对齐回原列表（nan 视为不拒绝）
+        rejects = _bh_fdr([p for p in pvals if p == p], alpha=0.05)  # Run BH after dropping NaNs.
+        # Align the reject flags back to the original list; treat NaN as non-rejection.
         rej_full: List[bool] = []
         k = 0
         for p in pvals:

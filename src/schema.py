@@ -8,20 +8,23 @@ ScenarioId = Literal["outdoor_dwr_windbreaker", "winter_warm_midlayer"]
 
 
 class Compliance(BaseModel):
-    pfas_free: bool = Field(..., description="是否 PFAS-free")
+    pfas_free: bool = Field(..., description="Whether the material is PFAS-free")
 
     model_config = ConfigDict(extra="allow")
 
 
 class Care(BaseModel):
-    machine_wash: bool = Field(..., description="是否可机洗")
+    machine_wash: bool = Field(..., description="Whether the material is machine washable")
 
     model_config = ConfigDict(extra="allow")
 
 
 class FabricCandidate(BaseModel):
     """
-    候选面料的通用结构（允许 extra 字段，便于扩展 catalog 字段）。
+    Shared structure for fabric candidates.
+
+    Extra fields are allowed so catalog-specific attributes can be extended
+    without changing the base schema.
     """
 
     id: str
@@ -30,18 +33,18 @@ class FabricCandidate(BaseModel):
     water_repellency: Optional[int] = None  # 1..5
     breathability: Optional[int] = None  # 1..5
     abrasion: Optional[int] = None  # 1..5
-    handfeel_noise: Optional[int] = None  # 1..5，越高越安静/手感更好
+    handfeel_noise: Optional[int] = None  # 1..5, higher means quieter and better handfeel
     weight_gsm: Optional[float] = None
 
     # winter
     loft_or_clo: Optional[float] = None
     wind_blocking: Optional[int] = None  # 1..5
     moisture_management: Optional[int] = None  # 1..5
-    bulk_weight: Optional[int] = None  # 1..5，越低越轻薄
+    bulk_weight: Optional[int] = None  # 1..5, lower means lighter and less bulky
 
     # common
-    cost_level: int  # 1..5，越低越便宜
-    lead_time_level: int  # 1..5，越低越快
+    cost_level: int  # 1..5, lower means cheaper
+    lead_time_level: int  # 1..5, lower means faster
     compliance: Compliance
     care: Optional[Care] = None
 
@@ -60,7 +63,7 @@ class MCQQuestion(BaseModel):
 
 class AgentDecision(BaseModel):
     """
-    多智能体角色输出的统一 JSON 结构（严格与论文/工程约定对齐）。
+    Unified JSON structure for multi-agent role outputs.
     """
 
     pick: Literal["A", "B", "C", "D"]

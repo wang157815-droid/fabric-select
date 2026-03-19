@@ -39,7 +39,8 @@ def _append_jsonl(path: Path, obj: Mapping[str, Any]) -> None:
 def _append_csv(path: Path, row: Mapping[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     file_exists = path.exists()
-    # 为避免“同一个 csv 文件混入不同列集合导致错位”，若已存在文件，则要求 header 与 row keys 一致。
+    # Prevent column misalignment when appending to an existing CSV file.
+    # If the file already exists, require the header to match the new row keys.
     if file_exists:
         with path.open("r", newline="", encoding="utf-8") as rf:
             reader = csv.reader(rf)
@@ -58,7 +59,7 @@ def _append_csv(path: Path, row: Mapping[str, Any]) -> None:
         writer = csv.DictWriter(f, fieldnames=list(fieldnames))
         if not file_exists:
             writer.writeheader()
-        # 补齐缺失 key，避免 DictWriter 报错
+        # Fill missing keys to keep DictWriter happy.
         out_row = {k: row.get(k) for k in fieldnames}
         writer.writerow(out_row)
 
@@ -79,7 +80,7 @@ def _sum_latency(calls: List[Mapping[str, Any]]) -> float:
     return float(sum(float(c.get("latency_s") or 0.0) for c in calls))
 
 
-app = typer.Typer(add_completion=False, help="运行 LLM 策略评测，输出 results.csv 与 per_question_log.jsonl。")
+app = typer.Typer(add_completion=False, help="Run strategy evaluation and write results.csv plus per_question_log.jsonl.")
 
 def _run_key(
     *,
@@ -134,13 +135,14 @@ def _load_existing_keys(results_csv: Path) -> set[Tuple[str, str, str, float, in
                     )
                 )
             except Exception:
-                # 兼容旧 results.csv（缺字段/类型不一致），直接跳过不计入去重
+                # Be tolerant of older results.csv files with missing or mismatched fields.
                 continue
     return keys
 
 
 def _load_completed_qids(
     log_jsonl: Path,
+    questions_path: Path,
     strategy: str,
     scenario: str,
     temperature: float,
@@ -148,8 +150,10 @@ def _load_completed_qids(
     seed: int,
 ) -> set[str]:
     """
-    从 per_question_log.jsonl 中读取已完成的 question_id。
-    通过匹配 strategy/scenario/temperature/repeat_idx 字段来识别（兼容新旧日志格式）。
+    Read completed question IDs from `per_question_log.jsonl`.
+
+    Match records by `questions_path + strategy/scenario/temperature/repeat_idx`
+    to support both old and new log formats.
     """
     if not log_jsonl.exists():
         return set()
@@ -161,15 +165,17 @@ def _load_completed_qids(
                 continue
             try:
                 obj = json.loads(line)
-                # 直接匹配字段（比匹配 run_id 前缀更可靠）
+                # Match explicit fields instead of a run_id prefix.
                 if (
-                    str(obj.get("strategy")) == strategy
+                    str(obj.get("questions_path")) == str(questions_path)
+                    and str(obj.get("strategy")) == strategy
                     and str(obj.get("scenario")) == scenario
                     and float(obj.get("temperature", -1)) == float(temperature)
                     and int(obj.get("repeat_idx", -1)) == int(repeat_idx)
                 ):
                     qid = str(obj.get("question_id") or "")
-                    # 仅将“成功解析出 A/B/C/D”的题目视为已完成，避免 pred=None 的失败样本在 resume 时被跳过
+                    # Only treat successfully parsed A/B/C/D predictions as completed
+                    # so failed `pred=None` cases are not skipped during resume.
                     pred = str(obj.get("pred") or "").strip()
                     if qid and pred in ("A", "B", "C", "D"):
                         done.add(qid)
@@ -181,6 +187,7 @@ def _load_completed_qids(
 def _summarize_from_log(
     log_jsonl: Path,
     *,
+    questions_path: Path,
     strategy: str,
     scenario: str,
     temperature: float,
@@ -188,10 +195,10 @@ def _summarize_from_log(
     target_qids: Optional[set[str]] = None,
 ) -> Dict[str, Any]:
     """
-    从 per_question_log.jsonl 中汇总某个 run（按 strategy/scenario/temperature/repeat_idx 匹配）。
+    Summarize one run from `per_question_log.jsonl`.
 
-    - 若同一 question_id 出现多次（断点续跑/重复跑），取 timestamp 最新的一条。
-    - target_qids 不为空时，仅统计该集合内的题目。
+    - If the same `question_id` appears multiple times, keep the newest timestamp.
+    - If `target_qids` is provided, summarize only that subset.
     """
     if not log_jsonl.exists():
         return {
@@ -214,6 +221,8 @@ def _summarize_from_log(
             except Exception:
                 continue
 
+            if str(obj.get("questions_path")) != str(questions_path):
+                continue
             if str(obj.get("strategy")) != strategy:
                 continue
             if str(obj.get("scenario")) != scenario:
@@ -266,45 +275,45 @@ def _summarize_from_log(
 def main(
     strategy: str = typer.Option(
         ...,
-        help=f"策略名：非LLM={sorted(NON_LLM_STRATEGIES)}；单智能体={sorted(SINGLE_STRATEGIES)}；多智能体={sorted(MULTI_STRATEGIES)}",
+        help=f"Strategy name: non-LLM={sorted(NON_LLM_STRATEGIES)}; single-agent={sorted(SINGLE_STRATEGIES)}; multi-agent={sorted(MULTI_STRATEGIES)}",
     ),
-    scenario: str = typer.Option("outdoor_dwr_windbreaker", help="场景：outdoor_dwr_windbreaker / winter_warm_midlayer"),
-    temperature: float = typer.Option(0.6, help="采样温度"),
-    repeats: int = typer.Option(2, help="重复次数"),
-    n_questions: int = typer.Option(50, "--n-questions", help="每次重复抽取题目数"),
-    seed: int = typer.Option(123, help="抽题随机种子"),
-    max_tokens: int = typer.Option(512, help="单次调用最大输出 tokens"),
+    scenario: str = typer.Option("outdoor_dwr_windbreaker", help="Scenario: outdoor_dwr_windbreaker / winter_warm_midlayer"),
+    temperature: float = typer.Option(0.6, help="Sampling temperature"),
+    repeats: int = typer.Option(2, help="Number of repeated runs"),
+    n_questions: int = typer.Option(50, "--n-questions", help="Number of sampled questions per repeat"),
+    seed: int = typer.Option(123, help="Question-sampling seed"),
+    max_tokens: int = typer.Option(512, help="Maximum output tokens per call"),
     retry_on_none: bool = typer.Option(
         True,
         "--retry-on-none/--no-retry-on-none",
-        help="当无法抽取 A/B/C/D（pred=None）时，自动用更高的 max_tokens 重试一次（会计入 calls/tokens/latency）。",
+        help="If A/B/C/D cannot be extracted (`pred=None`), retry once with a higher `max_tokens` value and count that retry in calls/tokens/latency.",
     ),
-    retry_max_tokens: int = typer.Option(1024, "--retry-max-tokens", help="重试时使用的 max_tokens（仅在 pred=None 时触发）。"),
-    progress: bool = typer.Option(True, "--progress/--no-progress", help="显示逐题进度与 ETA"),
-    progress_every: int = typer.Option(1, "--progress-every", help="每隔多少题输出一次进度"),
-    questions_path: Path = typer.Option(Path("data/questions.jsonl"), help="题库路径（jsonl）"),
-    out_dir: Path = typer.Option(Path("outputs"), help="输出目录（results.csv + per_question_log.jsonl）"),
-    results_name: str = typer.Option("results.csv", "--results-name", help="结果 CSV 文件名（例如 results_main.csv）"),
-    log_name: str = typer.Option("per_question_log.jsonl", "--log-name", help="逐题日志 JSONL 文件名（例如 per_question_log_main.jsonl）"),
+    retry_max_tokens: int = typer.Option(1024, "--retry-max-tokens", help="`max_tokens` used for the retry path (triggered only when `pred=None`)"),
+    progress: bool = typer.Option(True, "--progress/--no-progress", help="Show per-question progress and ETA"),
+    progress_every: int = typer.Option(1, "--progress-every", help="Print progress every N processed questions"),
+    questions_path: Path = typer.Option(Path("data/questions.jsonl"), help="Path to the question pool JSONL"),
+    out_dir: Path = typer.Option(Path("outputs"), help="Output directory for results.csv and per_question_log.jsonl"),
+    results_name: str = typer.Option("results.csv", "--results-name", help="Output CSV filename, for example `results_main.csv`"),
+    log_name: str = typer.Option("per_question_log.jsonl", "--log-name", help="Per-question JSONL log filename, for example `per_question_log_main.jsonl`"),
     skip_existing: bool = typer.Option(
         False,
         "--skip-existing/--no-skip-existing",
-        help="若 results 文件中已存在相同配置(questions_path/strategy/scenario/t/repeat/n/seed/max_tokens/重试参数/model)的记录，则跳过该 repeat。",
+        help="Skip a repeat if `results` already contains the same configuration (questions_path/strategy/scenario/t/repeat/n/seed/max_tokens/retry params/model).",
     ),
     log_messages: bool = typer.Option(
         False,
         "--log-messages/--no-log-messages",
-        help="是否在 per_question_log 中记录完整 messages（会显著增大体积；主实验建议关闭）。",
+        help="Whether to store full prompt/response messages in the per-question log. This increases file size substantially and is usually best left off for main experiments.",
     ),
     abort_on_llm_error: bool = typer.Option(
         True,
         "--abort-on-llm-error/--no-abort-on-llm-error",
-        help="若任意一次调用返回 [LLM_ERROR]，立即中止本次 run（避免 tokens=0 的假结果污染主实验）。",
+        help="Abort the current run immediately if any call returns `[LLM_ERROR]`, preventing zero-token pseudo-results from contaminating the main experiment.",
     ),
     resume: bool = typer.Option(
         False,
         "--resume/--no-resume",
-        help="断点续跑：从 per_question_log 中读取已完成的 question_id 并跳过，仅重跑剩余题目。",
+        help="Resume from the per-question log by skipping completed question_ids and rerunning only the remainder.",
     ),
 ) -> None:
     if strategy not in SINGLE_STRATEGIES and strategy not in MULTI_STRATEGIES and strategy not in NON_LLM_STRATEGIES:
@@ -315,18 +324,20 @@ def main(
     if not q_pool:
         raise typer.BadParameter(f"No questions for scenario={scenario}. Check {questions_path}")
 
-    # 仅在需要 LLM 的策略时初始化 OpenAIClient，避免非LLM基线也依赖 API Key
+    # Initialize the OpenAI client only for LLM-based strategies so non-LLM
+    # baselines do not require an API key.
     llm: Optional[OpenAIClient] = None
     if strategy in SINGLE_STRATEGIES or strategy in MULTI_STRATEGIES:
         llm = OpenAIClient()
-        # gpt-5 系列（含 gpt-5-mini）在当前 API 行为下通常不支持自定义 temperature；
-        # 为避免“日志记录的 temperature 与实际调用不一致”，这里对 gpt-5* 强制 temperature=1.0。
+        # GPT-5-family models often do not support custom temperatures under the
+        # current API behavior, so force temperature=1.0 to keep logs accurate.
         if str(getattr(llm, "model", "")).startswith("gpt-5") and float(temperature) != 1.0:
             typer.echo(f"[note] model={llm.model} does not support temperature={temperature}; forcing temperature=1.0")
             temperature = 1.0
         model_name = str(llm.model)
     else:
-        # 非LLM基线：仍沿用 MODEL 环境变量作为“配置标签”，便于与主实验同一 config 下对比
+        # Non-LLM baselines still reuse the MODEL env var as a config label so
+        # they can be compared under the same experiment configuration.
         import os
 
         model_name = str(os.getenv("MODEL") or "gpt-5-mini")
@@ -362,11 +373,12 @@ def main(
                 continue
         run_id = f"{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')}_{strategy}_{scenario}_t{temperature}_r{r}_seed{seed}"
         
-        # --resume：读取已完成的 question_id 并过滤
+        # For `--resume`, read already completed question IDs and filter them out.
         completed_qids: set[str] = set()
         if resume:
             completed_qids = _load_completed_qids(
                 log_jsonl,
+                questions_path=questions_path,
                 strategy=strategy,
                 scenario=scenario,
                 temperature=temperature,
@@ -387,17 +399,17 @@ def main(
         total_latency = 0.0
         total_tokens = 0
 
-        processed = 0  # 实际处理的题目数（用于进度统计）
+        processed = 0  # Number of questions processed in this invocation.
         for qi, q in enumerate(batch):
             qid = str(q.get("id") or "")
             gold = q.get("answer")
             
-            # --resume：跳过已完成的题目
+            # Skip completed items when resuming.
             if resume and qid in completed_qids:
                 continue
             processed += 1
 
-            # 给 LLM 的 seed：保证“同 repeat 内稳定”，不同题也不同
+            # Per-call seed: stable within a repeat, but distinct across questions.
             call_seed: Optional[int] = (seed + r * 100_000 + qi) if seed is not None else None
 
             if strategy in NON_LLM_STRATEGIES:
@@ -413,7 +425,8 @@ def main(
 
             pred = out.get("pick")
             retry_info: Optional[Dict[str, Any]] = None
-            # 仅对“单智能体”做重试：非LLM/多智能体内部有 fallback，pick 通常不会是 None
+            # Retry only for single-agent strategies; non-LLM and multi-agent
+            # paths already have their own fallbacks and usually do not return None.
             if (
                 strategy in SINGLE_STRATEGIES
                 and retry_on_none
@@ -436,7 +449,7 @@ def main(
                     "first_pick": pred,
                     "retry_pick": pred2,
                 }
-                # 合并调用记录：计入总 calls/tokens/latency
+                # Merge the retry records so total calls/tokens/latency stay accurate.
                 calls1 = out.get("calls") or []
                 calls2 = out2.get("calls") or []
                 out = {
@@ -450,7 +463,8 @@ def main(
 
             calls = out.get("calls") or []
             if not log_messages:
-                # 主实验默认不记录完整 prompt messages（体积会爆炸）；需要调试时可开 --log-messages
+                # Main experiments omit full prompt messages by default because the
+                # logs become extremely large. Enable `--log-messages` for debugging.
                 for c in calls:
                     if isinstance(c, dict) and "messages" in c:
                         c.pop("messages", None)
@@ -513,12 +527,14 @@ def main(
                     )
 
         t_run = time.perf_counter() - t_run0
-        # results.csv 需要代表“该 repeat 的全量表现”，即使启用了 --resume 也应按全量题目汇总。
-        # 若本次 run 是断点续跑（completed_qids 非空或 processed < n），从日志中重建全量统计。
+        # `results.csv` should represent the full repeat, even when `--resume` is
+        # used. If this run resumed from a partial state, rebuild the aggregate
+        # statistics from the log.
         if resume and (completed_qids or processed < n):
             target_qids = {str(q.get("id") or "") for q in batch if str(q.get("id") or "")}
             summary = _summarize_from_log(
                 log_jsonl,
+                questions_path=questions_path,
                 strategy=strategy,
                 scenario=scenario,
                 temperature=temperature,

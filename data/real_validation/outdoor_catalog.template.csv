@@ -1,0 +1,3 @@
+id,source_url,source_name,weight_gsm,water_repellency,breathability,abrasion,handfeel_noise,compliance.pfas_free,cost_level,lead_time_level,water_repellency_raw,breathability_raw,abrasion_raw
+fabric_0001,https://example.com/datasheet1,ExampleSupplier,95,4,4,3,,,
+

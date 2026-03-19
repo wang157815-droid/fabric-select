@@ -1,0 +1,3 @@
+id,source_url,source_name,loft_or_clo,wind_blocking,moisture_management,bulk_weight,care.machine_wash,compliance.pfas_free,cost_level,lead_time_level,loft_or_clo_raw,wind_blocking_raw,moisture_management_raw,bulk_weight_raw
+fabric_0001,https://example.com/datasheet1,ExampleSupplier,1.5,3,4,3,true,,,
+

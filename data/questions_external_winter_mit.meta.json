@@ -1,0 +1,173 @@
+{
+  "report": {
+    "scenario": "winter_warm_midlayer",
+    "n_catalog": 30,
+    "n_questions": 200,
+    "attempts": 766,
+    "accept_rate": 0.26109660574412535,
+    "min_margin": 0.02,
+    "margin_median": 0.07395833333333335,
+    "must_usage": {
+      "Moisture management must be at least 3/5": 127,
+      "Machine washability is required (care constraint)": 111,
+      "Wind blocking must be at least 3/5": 105,
+      "Thermal insulation (loft/clo) must be at least 1.2": 91,
+      "Thermal insulation (loft/clo) must be at least 1.5 (high warmth)": 62,
+      "Bulk must not exceed level 3 (low-bulk requirement)": 39
+    },
+    "catalog_csv": "data\\real_validation\\winter_catalog_mit.csv",
+    "rules_path": "configs\\rules_winter.json",
+    "min_coverage": 0.7,
+    "derive_ordinals": true
+  },
+  "derived": {},
+  "dropped": {
+    "must": [],
+    "prefer": [
+      {
+        "field": "cost_level",
+        "weight": 0.12,
+        "direction": "low",
+        "normalization": {
+          "type": "ordinal",
+          "levels": [
+            1,
+            2,
+            3,
+            4,
+            5
+          ]
+        },
+        "reason": "Lower cost (1=low cost, 5=high cost)",
+        "coverage": 0.0
+      },
+      {
+        "field": "lead_time_level",
+        "weight": 0.08,
+        "direction": "low",
+        "normalization": {
+          "type": "ordinal",
+          "levels": [
+            1,
+            2,
+            3,
+            4,
+            5
+          ]
+        },
+        "reason": "Shorter lead time (1=short lead time, 5=long lead time)",
+        "coverage": 0.0
+      }
+    ],
+    "tie_breakers": [
+      {
+        "field": "cost_level",
+        "direction": "low",
+        "coverage": 0.0
+      }
+    ]
+  },
+  "rules_used": {
+    "version": 1,
+    "scenario": "winter_warm_midlayer",
+    "must": [
+      {
+        "field": "care.machine_wash",
+        "op": "eq",
+        "value": true,
+        "reason": "Machine washability is required (care constraint)"
+      },
+      {
+        "field": "loft_or_clo",
+        "op": "gte",
+        "value": 1.2,
+        "reason": "Thermal insulation (loft/clo) must be at least 1.2 (winter midlayer requirement)"
+      },
+      {
+        "field": "moisture_management",
+        "op": "gte",
+        "value": 3,
+        "reason": "Moisture management must be at least 3/5 (comfort for active use)"
+      }
+    ],
+    "prefer": [
+      {
+        "field": "loft_or_clo",
+        "weight": 0.37499999999999994,
+        "direction": "high",
+        "normalization": {
+          "type": "minmax",
+          "min": 0.8,
+          "max": 2.6
+        },
+        "reason": "Higher warmth (higher loft/clo is better)"
+      },
+      {
+        "field": "wind_blocking",
+        "weight": 0.18749999999999997,
+        "direction": "high",
+        "normalization": {
+          "type": "ordinal",
+          "levels": [
+            1,
+            2,
+            3,
+            4,
+            5
+          ]
+        },
+        "reason": "Better wind blocking / thermal stability"
+      },
+      {
+        "field": "moisture_management",
+        "weight": 0.25,
+        "direction": "high",
+        "normalization": {
+          "type": "ordinal",
+          "levels": [
+            1,
+            2,
+            3,
+            4,
+            5
+          ]
+        },
+        "reason": "Better moisture management / quick-dry performance"
+      },
+      {
+        "field": "bulk_weight",
+        "weight": 0.18749999999999997,
+        "direction": "low",
+        "normalization": {
+          "type": "ordinal",
+          "levels": [
+            1,
+            2,
+            3,
+            4,
+            5
+          ]
+        },
+        "reason": "Lower bulk (lower bulk/weight is better; 1=light/thin, 5=bulky/heavy)"
+      }
+    ],
+    "tie_breakers": [
+      {
+        "field": "loft_or_clo",
+        "direction": "high"
+      },
+      {
+        "field": "moisture_management",
+        "direction": "high"
+      },
+      {
+        "field": "bulk_weight",
+        "direction": "low"
+      },
+      {
+        "field": "id",
+        "direction": "low"
+      }
+    ]
+  }
+}

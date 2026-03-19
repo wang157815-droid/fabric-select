@@ -1,0 +1,188 @@
+{
+  "report": {
+    "scenario": "outdoor_dwr_windbreaker",
+    "n_catalog": 40,
+    "n_questions": 120,
+    "attempts": 309,
+    "accept_rate": 0.3883495145631068,
+    "min_margin": 0.05,
+    "margin_median": 0.09250000000000003,
+    "must_usage": {
+      "PFAS-free is required (compliance/sustainability)": 43,
+      "Cost level must not exceed 3 (budget constraint)": 38,
+      "Weight must not exceed 120 gsm (lightweight requirement)": 36,
+      "Breathability must be at least 3/5": 35,
+      "Water repellency must be at least 3/5": 35,
+      "Abrasion resistance must be at least 3/5 (outdoor use)": 34,
+      "Water repellency must be at least 4/5": 32,
+      "Abrasion resistance must be at least 4/5 (high-intensity outdoor use)": 32,
+      "Weight must not exceed 150 gsm": 29,
+      "Lead-time level must not exceed 3 (fast launch)": 29
+    },
+    "catalog_csv": "data\\real_validation\\_smoke_outdoor.csv",
+    "rules_path": "configs\\rules_outdoor.json",
+    "min_coverage": 0.7,
+    "derive_ordinals": true
+  },
+  "derived": {},
+  "dropped": {
+    "must": [],
+    "prefer": [],
+    "tie_breakers": []
+  },
+  "rules_used": {
+    "version": 1,
+    "scenario": "outdoor_dwr_windbreaker",
+    "must": [
+      {
+        "field": "compliance.pfas_free",
+        "op": "eq",
+        "value": true,
+        "reason": "PFAS-free is required (compliance/sustainability)"
+      },
+      {
+        "field": "water_repellency",
+        "op": "gte",
+        "value": 4,
+        "reason": "Water repellency must be at least 4/5"
+      },
+      {
+        "field": "abrasion",
+        "op": "gte",
+        "value": 3,
+        "reason": "Abrasion resistance must be at least 3/5 (outdoor use)"
+      }
+    ],
+    "prefer": [
+      {
+        "field": "water_repellency",
+        "weight": 0.2,
+        "direction": "high",
+        "normalization": {
+          "type": "ordinal",
+          "levels": [
+            1,
+            2,
+            3,
+            4,
+            5
+          ]
+        },
+        "reason": "Stronger water repellency"
+      },
+      {
+        "field": "breathability",
+        "weight": 0.18,
+        "direction": "high",
+        "normalization": {
+          "type": "ordinal",
+          "levels": [
+            1,
+            2,
+            3,
+            4,
+            5
+          ]
+        },
+        "reason": "Higher breathability and comfort"
+      },
+      {
+        "field": "abrasion",
+        "weight": 0.15,
+        "direction": "high",
+        "normalization": {
+          "type": "ordinal",
+          "levels": [
+            1,
+            2,
+            3,
+            4,
+            5
+          ]
+        },
+        "reason": "Better abrasion resistance and durability"
+      },
+      {
+        "field": "handfeel_noise",
+        "weight": 0.1,
+        "direction": "high",
+        "normalization": {
+          "type": "ordinal",
+          "levels": [
+            1,
+            2,
+            3,
+            4,
+            5
+          ]
+        },
+        "reason": "Quieter with better handfeel (combined noise/handfeel score; higher is better)"
+      },
+      {
+        "field": "weight_gsm",
+        "weight": 0.1,
+        "direction": "low",
+        "normalization": {
+          "type": "minmax",
+          "min": 60,
+          "max": 180
+        },
+        "reason": "Lower weight (lower gsm is better)"
+      },
+      {
+        "field": "cost_level",
+        "weight": 0.15,
+        "direction": "low",
+        "normalization": {
+          "type": "ordinal",
+          "levels": [
+            1,
+            2,
+            3,
+            4,
+            5
+          ]
+        },
+        "reason": "Lower cost (1=low cost, 5=high cost)"
+      },
+      {
+        "field": "lead_time_level",
+        "weight": 0.12,
+        "direction": "low",
+        "normalization": {
+          "type": "ordinal",
+          "levels": [
+            1,
+            2,
+            3,
+            4,
+            5
+          ]
+        },
+        "reason": "Shorter lead time (1=short lead time, 5=long lead time)"
+      }
+    ],
+    "tie_breakers": [
+      {
+        "field": "water_repellency",
+        "direction": "high"
+      },
+      {
+        "field": "breathability",
+        "direction": "high"
+      },
+      {
+        "field": "cost_level",
+        "direction": "low"
+      },
+      {
+        "field": "lead_time_level",
+        "direction": "low"
+      },
+      {
+        "field": "id",
+        "direction": "low"
+      }
+    ]
+  }
+}

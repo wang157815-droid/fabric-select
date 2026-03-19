@@ -15,7 +15,7 @@ def load_rules(path: str | Path) -> Dict[str, Any]:
 
 def _get_by_path(obj: Mapping[str, Any], path: str) -> Any:
     """
-    支持用 "a.b.c" 访问嵌套 dict。
+    Support nested-dict access with paths like `"a.b.c"`.
     """
 
     cur: Any = obj
@@ -45,11 +45,11 @@ def _to_float(value: Any) -> float | None:
 
 def check_must(candidate: Mapping[str, Any], rules: Mapping[str, Any]) -> Tuple[bool, List[str]]:
     """
-    检查硬约束 must。
+    Check hard `must` constraints.
 
     Returns:
-      - ok: 是否全部满足
-      - fail_list: 不满足的原因列表（可用于解释/生成干扰项标签）
+      - ok: whether all constraints are satisfied
+      - fail_list: reasons for failed constraints
     """
 
     fails: List[str] = []
@@ -94,10 +94,12 @@ def check_must(candidate: Mapping[str, Any], rules: Mapping[str, Any]) -> Tuple[
 
 def _normalize(value: Any, normalization: Mapping[str, Any], direction: str) -> float:
     """
-    将单个字段归一化到 [0,1]，支持：
-      - minmax: 连续数值
-      - ordinal: 有序等级/离散值
-      - bool: 布尔
+    Normalize a single field to `[0, 1]`.
+
+    Supported modes:
+      - minmax: continuous numeric values
+      - ordinal: ordered categorical / discrete levels
+      - bool: boolean values
     """
 
     if value is None:
@@ -123,16 +125,16 @@ def _normalize(value: Any, normalization: Mapping[str, Any], direction: str) -> 
     if ntype == "ordinal":
         levels: List[Any] = list(normalization.get("levels", []))
         if not levels:
-            # 没提供 levels 就退化成 minmax（用常见 1..5）
+            # If no levels are provided, fall back to a common 1..5 scale.
             levels = [1, 2, 3, 4, 5]
         try:
             idx = levels.index(value)
         except ValueError:
-            # 尝试把数字/字符串归一到 levels
+            # Try to coerce numeric/string values onto the declared levels.
             v = _to_float(value)
             lv = [_to_float(x) for x in levels]
             if v is not None and all(x is not None for x in lv):
-                # 找最接近的
+                # Pick the nearest declared level.
                 idx = min(range(len(lv)), key=lambda i: abs(lv[i] - v))  # type: ignore[operator]
             else:
                 return 0.0
@@ -146,10 +148,10 @@ def _normalize(value: Any, normalization: Mapping[str, Any], direction: str) -> 
 
 def score_candidate(candidate: Mapping[str, Any], rules: Mapping[str, Any]) -> float:
     """
-    对候选面料按 prefer 加权求和（并用 must 做淘汰）。
+    Score a candidate by weighted `prefer` aggregation after `must` filtering.
 
-    - must 不满足：返回 -inf
-    - prefer：字段归一化到 [0,1] 后按权重加权
+    - if `must` fails: return `-inf`
+    - for `prefer`: normalize each field to `[0,1]` and combine by weight
     """
 
     ok, _fails = check_must(candidate, rules)
@@ -180,15 +182,16 @@ def score_candidate(candidate: Mapping[str, Any], rules: Mapping[str, Any]) -> f
 
 def _tie_value(candidate: Mapping[str, Any], field: str, direction: str) -> Any:
     """
-    tie-breaker 的比较值：
-    - 数值：用 float，missing 用 ±inf（missing 永远最差）
-    - 字符串：missing 用极大/极小哨兵（missing 永远最差）
+    Comparison value used for tie-breakers.
+
+    - numeric: use float; missing becomes ±inf so it is always worst
+    - string: use extreme sentinel values for missing so it is always worst
     """
 
     v = _get_by_path(candidate, field)
     if v is None:
         if direction == "high":
-            # high: bigger is better, missing is worst => very small
+        # high: larger is better, so missing should be very small
             return float("-inf")
         return float("inf")
 
@@ -199,10 +202,10 @@ def _tie_value(candidate: Mapping[str, Any], field: str, direction: str) -> Any:
 
     # string / other
     if isinstance(v, str):
-        # 对字符串 field（如 id）我们不做数值化；missing 已在上面处理。
+        # For string fields such as `id`, do not coerce to numeric values.
         return v
 
-    # fallback：尽量数值化
+    # Fallback: coerce to numeric when possible.
     fv = _to_float(v)
     if fv is None:
         return str(v)
@@ -214,22 +217,22 @@ def pick_best(
     rules: Mapping[str, Any],
 ) -> Tuple[OptionKey, Dict[OptionKey, float]]:
     """
-    从 A/B/C/D 候选里选择最优项。
+    Select the best option from the A/B/C/D candidates.
 
     Returns:
       - best_key: "A"/"B"/"C"/"D"
-      - scores: 每个候选的分数（must-fail 为 -inf）
+      - scores: score for each candidate (`-inf` for must-fail)
     """
 
     scores: Dict[OptionKey, float] = {k: score_candidate(v, rules) for k, v in candidates.items()}
 
-    # 先按分数取最大
+    # First select by score.
     best_score = max(scores.values()) if scores else float("-inf")
     tied: List[OptionKey] = [k for k, s in scores.items() if math.isclose(s, best_score) or s == best_score]
     if len(tied) == 1:
         return tied[0], scores
 
-    # tie-breakers
+    # Tie-breakers.
     for tb in rules.get("tie_breakers", []):
         field = tb["field"]
         direction = tb.get("direction", "high")
@@ -259,20 +262,20 @@ def pick_best(
         if len(tied) == 1:
             return tied[0], scores
 
-    # 仍然平局：按 option key 稳定选择（保证可复现）
+    # Still tied: pick by stable option-key order for reproducibility.
     return sorted(tied)[0], scores
 
 
 def describe_prefer(rules: Mapping[str, Any]) -> List[str]:
     """
-    可选：把 prefer 条目转成人类可读描述（用于 question/stem）。
+    Optional helper that turns `prefer` entries into human-readable labels.
     """
 
     out: List[str] = []
     for p in rules.get("prefer", []):
         reason = p.get("reason") or p.get("field")
         w = p.get("weight", 0)
-        out.append(f"{reason}（w={w}）")
+        out.append(f"{reason} (w={w})")
     return out
 
 

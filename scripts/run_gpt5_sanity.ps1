@@ -15,7 +15,7 @@ param(
 
 $ErrorActionPreference = "Stop"
 
-# 复核用更强模型
+# Use a stronger model for the sanity-check rerun
 $env:MODEL = "gpt-5"
 
 Write-Host "Running GPT-5 sanity check..."

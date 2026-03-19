@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-把实验结果图片汇总到一个 Markdown 文件里，方便统一查看和引用。
+Collect experiment figures into a single Markdown file for easier review and citation.
 """
 
 from __future__ import annotations
@@ -13,7 +13,7 @@ from typing import Dict, List, Tuple
 
 import typer
 
-app = typer.Typer(add_completion=False, help="汇总论文图片到单个 Markdown 文件")
+app = typer.Typer(add_completion=False, help="Collect paper figures into a single Markdown file.")
 
 
 def _now_ts() -> str:
@@ -25,7 +25,7 @@ def _posix(p: Path) -> str:
 
 
 def _nice_name(filename: str) -> str:
-    """把文件名转成更像 caption 的形式（尽量不做过度猜测）。"""
+    """Turn a filename into a caption-like label without over-interpreting it."""
     name = filename.replace(".png", "")
     name = name.replace("__", " / ")
     name = name.replace("_", " ")
@@ -35,8 +35,9 @@ def _nice_name(filename: str) -> str:
 
 def _scan_pngs(outputs_dir: Path) -> Dict[str, List[Path]]:
     """
-    返回分组后的图片列表（key 为组名）。
-    组名规则：
+    Return grouped figure paths keyed by group name.
+
+    Grouping rules:
     - figs_main -> Main Results
     - figs_ablation -> Ablation
     - figs_main_* -> Main (aux)
@@ -72,7 +73,7 @@ def _scan_pngs(outputs_dir: Path) -> Dict[str, List[Path]]:
         if p.is_file():
             groups["Appendix / Small Runs (figs)"].append(p)
 
-    # 去掉空组
+    # Drop empty groups.
     groups = {k: v for k, v in groups.items() if v}
     return groups
 
@@ -81,8 +82,8 @@ def _render_group(group_title: str, paths: List[Path], fig_prefix: str) -> str:
     lines: List[str] = []
     lines.append(f"## {group_title}\n")
 
-    # 目录
-    lines.append("### 目录\n")
+    # Table of contents.
+    lines.append("### Contents\n")
     for i, p in enumerate(paths, start=1):
         fig_id = f"{fig_prefix}{i}"
         caption = _nice_name(p.name)
@@ -90,7 +91,7 @@ def _render_group(group_title: str, paths: List[Path], fig_prefix: str) -> str:
         lines.append(f"- [{fig_id}](#{anchor}) - {caption}")
     lines.append("")
 
-    # 正文
+    # Body.
     for i, p in enumerate(paths, start=1):
         fig_id = f"{fig_prefix}{i}"
         caption = _nice_name(p.name)
@@ -105,10 +106,10 @@ def _render_group(group_title: str, paths: List[Path], fig_prefix: str) -> str:
 
         lines.append(f"### {fig_id}\n")
         lines.append(f"<a id=\"{anchor}\"></a>\n")
-        lines.append(f"- **文件**: `{rel}`")
+        lines.append(f"- **File**: `{rel}`")
         if size_kb is not None:
-            lines.append(f"- **大小**: {size_kb:.1f} KB")
-        lines.append(f"- **说明**: {caption}\n")
+            lines.append(f"- **Size**: {size_kb:.1f} KB")
+        lines.append(f"- **Caption**: {caption}\n")
         lines.append(f"![]({rel})\n")
 
     return "\n".join(lines).rstrip() + "\n"
@@ -121,15 +122,19 @@ def _wrap_details(title: str, body: str, open_default: bool = False) -> str:
 
 @app.command()
 def main(
-    outputs_dir: Path = typer.Option(Path("outputs"), help="outputs 目录"),
-    out_md: Path = typer.Option(Path("PAPER_FIGURES.md"), help="输出 Markdown 文件"),
+    outputs_dir: Path = typer.Option(Path("outputs"), help="Path to the outputs directory"),
+    out_md: Path = typer.Option(Path("PAPER_FIGURES.md"), help="Output Markdown file"),
 ) -> None:
     groups = _scan_pngs(outputs_dir)
 
     pieces: List[str] = []
-    pieces.append("# 论文图片汇总（自动生成）\n")
-    pieces.append(f"- 生成时间：{_now_ts()}  \n- 脚本：`scripts/compile_paper_figures.py`\n")
-    pieces.append("说明：本文件引用的是本地 `outputs/figs*` 下的 PNG；如果在 GitHub 上看不到图片，这是因为 `outputs/` 默认被 `.gitignore` 忽略。\n")
+    pieces.append("# Paper Figure Index (Auto-generated)\n")
+    pieces.append(f"- Generated at: {_now_ts()}  \n- Script: `scripts/compile_paper_figures.py`\n")
+    pieces.append(
+        "Note: this file links to local PNG files under `outputs/figs*`. "
+        "If images do not appear on GitHub, the usual reason is that `outputs/` "
+        "is ignored by `.gitignore`.\n"
+    )
 
     # Use stable figure IDs across runs.
     order: List[Tuple[str, str]] = [
@@ -145,7 +150,7 @@ def main(
         body = _render_group(group_key, groups[group_key], prefix)
         # Auxiliary groups stay folded by default.
         if group_key in ("Main Aux (figs_main_*)", "Appendix / Small Runs (figs)"):
-            body = _wrap_details(f"{group_key}（{len(groups[group_key])} 张）", body, open_default=False)
+            body = _wrap_details(f"{group_key} ({len(groups[group_key])} figures)", body, open_default=False)
         pieces.append(body)
 
     out_md.write_text("\n".join(pieces).rstrip() + "\n", encoding="utf-8")

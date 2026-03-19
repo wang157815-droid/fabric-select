@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-把论文相关表格汇总到一个 Markdown 文件里，方便统一查看和引用。
+Collect paper-related tables into a single Markdown file for easier review and citation.
 """
 
 from __future__ import annotations
@@ -13,7 +13,7 @@ from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
 import pandas as pd
 import typer
 
-app = typer.Typer(add_completion=False, help="汇总论文表格到单个 Markdown 文件")
+app = typer.Typer(add_completion=False, help="Collect paper tables into a single Markdown file.")
 
 
 def _now_ts() -> str:
@@ -54,13 +54,13 @@ def _format_cell(value: Any, col: str) -> str:
             return ""
         c = col.lower()
         v = float(value)
-        # p 值：保留 3 位有效数字（避免 0.000 被截断）
+        # p-values: keep three significant digits to avoid truncating to 0.000
         if c == "p" or c.endswith("_p") or c.startswith("p_") or "pvalue" in c:
             return f"{v:.3g}"
-        # 准确率 / margin：通常 3 位小数
+        # Accuracy / margin: typically three decimals
         if "acc" in c or "margin" in c:
             return f"{v:.3f}"
-        # 各类 rate：如果非常小，避免被显示成 0.000
+        # Rates: avoid showing extremely small values as 0.000
         if "rate" in c:
             av = abs(v)
             if 0 < av < 0.001:
@@ -68,16 +68,16 @@ def _format_cell(value: Any, col: str) -> str:
             if av < 0.01:
                 return f"{v:.4f}".rstrip("0").rstrip(".")
             return f"{v:.3f}"
-        # tokens：整数显示更清爽
+        # Tokens: integers are easier to read
         if "token" in c:
             return f"{v:.0f}"
-        # calls：两位小数
+        # Calls: two decimals
         if "call" in c:
             return f"{v:.2f}"
-        # latency：两位小数
+        # Latency: two decimals
         if "latency" in c:
             return f"{v:.2f}"
-        # 阈值
+        # Thresholds
         if "thresh" in c or "threshold" in c:
             return f"{v:.2f}"
         return _fmt_float_default(v)
@@ -105,7 +105,7 @@ def _df_to_markdown(df: pd.DataFrame, max_rows: Optional[int] = None) -> str:
 
 
 def _read_csv(path: Path) -> pd.DataFrame:
-    # utf-8-sig 兼容带 BOM 的 CSV
+    # `utf-8-sig` keeps compatibility with BOM-prefixed CSV files.
     return pd.read_csv(path, encoding="utf-8-sig")
 
 
@@ -137,36 +137,36 @@ def _table_section_csv(
 ) -> str:
     df = _read_csv(path)
     header = f"### {table_id + ' ' if table_id else ''}{title}\n\n"
-    meta = f"- **来源**: `{path.as_posix()}`  \n- **行数**: {len(df)}  \n- **列数**: {len(df.columns)}\n\n"
+    meta = f"- **Source**: `{path.as_posix()}`  \n- **Rows**: {len(df)}  \n- **Columns**: {len(df.columns)}\n\n"
     table_md = _df_to_markdown(df)
     if len(df) >= collapse_if_rows_ge:
-        table_md = _wrap_details(f"展开表格（{len(df)} 行）", table_md, open_default=False)
+        table_md = _wrap_details(f"Expand table ({len(df)} rows)", table_md, open_default=False)
     return header + meta + table_md + "\n"
 
 
 @app.command()
 def main(
-    main_dir: Path = typer.Option(Path("outputs/figs_main"), help="主实验表格目录（figs_main）"),
-    ablation_dir: Path = typer.Option(Path("outputs/figs_ablation"), help="消融表格目录（figs_ablation）"),
-    out_md: Path = typer.Option(Path("PAPER_TABLES.md"), help="输出 Markdown 文件"),
+    main_dir: Path = typer.Option(Path("outputs/figs_main"), help="Directory containing main-result tables (`figs_main`)"),
+    ablation_dir: Path = typer.Option(Path("outputs/figs_ablation"), help="Directory containing ablation tables (`figs_ablation`)"),
+    out_md: Path = typer.Option(Path("PAPER_TABLES.md"), help="Output Markdown file"),
 ) -> None:
     pieces: List[str] = []
-    pieces.append("# 论文表格汇总（自动生成）\n")
-    pieces.append(f"- 生成时间：{_now_ts()}  \n- 脚本：`scripts/compile_paper_tables.py`\n")
+    pieces.append("# Paper Table Index (Auto-generated)\n")
+    pieces.append(f"- Generated at: {_now_ts()}  \n- Script: `scripts/compile_paper_tables.py`\n")
 
     # Main results.
-    pieces.append("## 主实验（Main Results）\n")
+    pieces.append("## Main Results\n")
     main_order: List[Tuple[str, str, Optional[str]]] = [
-        ("Table 1", "总体结果汇总（mean±std，含成本/可靠性指标）", "paper_table1_overall"),
-        ("Table 2", "分场景结果汇总（每场景 mean±std）", "summary_by_strategy"),
-        ("Table 3", "按约束类型分组的准确率（mean±std）", "paper_acc_by_constraint"),
-        ("Table A1", "按约束类型分组的准确率（每个 repeat/run）", "paper_acc_by_constraint_per_run"),
-        ("Table 4", "按难度分组的准确率（mean±std）", "paper_acc_by_difficulty"),
-        ("Table A2", "按难度分组的准确率（每个 repeat/run）", "paper_acc_by_difficulty_per_run"),
-        ("Table 5", "统计检验（Kruskal–Wallis / Mann–Whitney U + BH-FDR）", "stats_tests"),
+        ("Table 1", "Overall result summary (mean±std, including cost/reliability metrics)", "paper_table1_overall"),
+        ("Table 2", "Per-scenario result summary (mean±std for each scenario)", "summary_by_strategy"),
+        ("Table 3", "Accuracy grouped by constraint type (mean±std)", "paper_acc_by_constraint"),
+        ("Table A1", "Accuracy grouped by constraint type (per repeat/run)", "paper_acc_by_constraint_per_run"),
+        ("Table 4", "Accuracy grouped by difficulty (mean±std)", "paper_acc_by_difficulty"),
+        ("Table A2", "Accuracy grouped by difficulty (per repeat/run)", "paper_acc_by_difficulty_per_run"),
+        ("Table 5", "Statistical tests (Kruskal-Wallis / Mann-Whitney U + BH-FDR)", "stats_tests"),
     ]
 
-    # `paper_table1_overall` 的文件名会带额外后缀，所以这里做前缀匹配。
+    # `paper_table1_overall` files may carry suffixes, so match by prefix.
     def pick_by_prefix(dir_path: Path, prefix: str) -> Optional[Path]:
         cand = sorted(dir_path.glob(prefix + "*.csv"))
         return cand[0] if cand else None
@@ -174,15 +174,15 @@ def main(
     for table_id, title, prefix in main_order:
         path = pick_by_prefix(main_dir, prefix)
         if not path:
-            pieces.append(f"### {table_id} {title}\n\n- **缺失**：未找到 `{prefix}*.csv` 于 `{main_dir.as_posix()}`\n\n")
+            pieces.append(f"### {table_id} {title}\n\n- **Missing**: could not find `{prefix}*.csv` in `{main_dir.as_posix()}`\n\n")
             continue
         pieces.append(_table_section_csv(title=title, path=path, table_id=table_id))
 
-    pieces.append("## 数据集统计（Dataset）\n")
+    pieces.append("## Dataset\n")
     dataset_order: List[Tuple[str, str]] = [
-        ("Table D1", "数据集按场景摘要（margin / must 约束数量）"),
-        ("Table D2", "各场景约束类型计数"),
-        ("Table D3", "答案分布（gold 选项分布）"),
+        ("Table D1", "Dataset summary by scenario (margin / number of must constraints)"),
+        ("Table D2", "Constraint-type counts by scenario"),
+        ("Table D3", "Answer distribution (gold option counts)"),
     ]
     dataset_files: Dict[str, str] = {
         "Table D1": "paper_dataset_summary_by_scenario.csv",
@@ -194,58 +194,58 @@ def main(
         if fp.exists():
             pieces.append(_table_section_csv(title=title, path=fp, table_id=table_id, collapse_if_rows_ge=200))
         else:
-            pieces.append(f"### {table_id} {title}\n\n- **缺失**：未找到 `{fp.as_posix()}`\n\n")
+            pieces.append(f"### {table_id} {title}\n\n- **Missing**: could not find `{fp.as_posix()}`\n\n")
 
-    # GPT-5 子集复核结果放在 `outputs/figs_main_gpt5*`。
+    # GPT-5 sanity-check subsets are stored under `outputs/figs_main_gpt5*`.
     extra_root = main_dir.parent
     gpt5_dirs = sorted([p for p in extra_root.glob("figs_main_gpt5*") if p.is_dir()])
     if gpt5_dirs:
-        pieces.append("## 跨模型复核（GPT-5 sanity check，子集）\n")
+        pieces.append("## Cross-model Sanity Check (GPT-5 subset)\n")
         for d in gpt5_dirs:
             pieces.append(f"### {d.name}\n")
 
-            # 最少保留 overall、per-scenario 和 stats 三组表。
+            # At minimum keep the overall, per-scenario, and stats tables.
             v_table = pick_by_prefix(d, "paper_table1_overall")
             if v_table:
                 pieces.append(_table_section_csv(title="Overall summary (GPT-5 sanity)", path=v_table, table_id=None))
             else:
-                pieces.append(f"- **缺失**：未找到 `paper_table1_overall*.csv` 于 `{d.as_posix()}`\n")
+                pieces.append(f"- **Missing**: could not find `paper_table1_overall*.csv` in `{d.as_posix()}`\n")
 
             v_sum = d / "summary_by_strategy.csv"
             if v_sum.exists():
                 pieces.append(_table_section_csv(title="Per-scenario summary (GPT-5 sanity)", path=v_sum, table_id=None))
             else:
-                pieces.append(f"- **缺失**：未找到 `{v_sum.as_posix()}`\n")
+                pieces.append(f"- **Missing**: could not find `{v_sum.as_posix()}`\n")
 
             v_stats = d / "stats_tests.csv"
             if v_stats.exists():
                 pieces.append(_table_section_csv(title="Stats tests (GPT-5 sanity)", path=v_stats, table_id=None, collapse_if_rows_ge=200))
             else:
-                pieces.append(f"- **缺失**：未找到 `{v_stats.as_posix()}`\n")
+                pieces.append(f"- **Missing**: could not find `{v_stats.as_posix()}`\n")
 
     # Ablation tables.
-    pieces.append("## 消融实验（Ablation）\n")
+    pieces.append("## Ablation\n")
     ablation_md = ablation_dir / "ablation_report.md"
     if ablation_md.exists():
         md = ablation_md.read_text(encoding="utf-8")
-        md = _heading_shift(md, shift=2)  # 让 ablation_report 的标题层级挂到本章节下面。
+        md = _heading_shift(md, shift=2)  # Nest ablation report headings under this section.
         pieces.append(md)
-        pieces.append(f"\n- **来源**: `{ablation_md.as_posix()}`\n")
+        pieces.append(f"\n- **Source**: `{ablation_md.as_posix()}`\n")
     else:
-        pieces.append(f"- **缺失**：未找到 `{ablation_md.as_posix()}`\n")
+        pieces.append(f"- **Missing**: could not find `{ablation_md.as_posix()}`\n")
 
-    # 同时附上原始消融 CSV，方便回查。
-    pieces.append("\n## 附录：消融 CSV 明细（可复核）\n")
+    # Also include the raw ablation CSV files for auditing.
+    pieces.append("\n## Appendix: Ablation CSV Details\n")
     ablation_csvs = sorted(ablation_dir.glob("ablation_*.csv"))
     if not ablation_csvs:
-        pieces.append(f"- **缺失**：未找到 `ablation_*.csv` 于 `{ablation_dir.as_posix()}`\n")
+        pieces.append(f"- **Missing**: could not find `ablation_*.csv` in `{ablation_dir.as_posix()}`\n")
     else:
         for p in ablation_csvs:
             title = p.name
             try:
                 pieces.append(_table_section_csv(title=title, path=p, table_id=None, collapse_if_rows_ge=120))
             except Exception as e:
-                pieces.append(f"### {title}\n\n- 读取失败：{e}\n\n")
+                pieces.append(f"### {title}\n\n- Read failed: {e}\n\n")
 
     out_md.parent.mkdir(parents=True, exist_ok=True)
     out_md.write_text("\n".join(pieces).rstrip() + "\n", encoding="utf-8")

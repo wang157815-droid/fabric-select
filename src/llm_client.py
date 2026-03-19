@@ -7,9 +7,13 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
 
-from dotenv import load_dotenv
+try:
+    # Optional dependency: makes local development convenient, but shouldn't break non-LLM workflows.
+    from dotenv import load_dotenv  # type: ignore
+except Exception:  # pragma: no cover
+    load_dotenv = None  # type: ignore[assignment]
 
-# 网络类异常重试配置
+# Retry settings for transient network/service errors.
 _RETRY_MAX_ATTEMPTS = 5
 _RETRY_BASE_DELAY_S = 2.0
 _RETRY_MAX_DELAY_S = 60.0
@@ -33,7 +37,7 @@ class LLMCompletion:
 
 class LLMClient(ABC):
     """
-    统一 LLM 抽象层：便于后续扩展到 Anthropic / vLLM 等。
+    Shared LLM abstraction layer for future Anthropic / vLLM extensions.
     """
 
     @abstractmethod
@@ -49,13 +53,15 @@ class LLMClient(ABC):
 
 class OpenAIClient(LLMClient):
     """
-    OpenAI API 客户端（读取 OPENAI_API_KEY, MODEL 环境变量）。
+    OpenAI API client that reads the `OPENAI_API_KEY` and `MODEL` env vars.
 
-    默认优先走 Responses API；若不可用则回退到 Chat Completions。
+    Prefer the Responses API by default; fall back to Chat Completions when
+    needed.
     """
 
     def __init__(self, api_key: Optional[str] = None, model: Optional[str] = None):
-        load_dotenv()
+        if load_dotenv is not None:
+            load_dotenv()
 
         api_key = api_key or os.getenv("OPENAI_API_KEY")
         if not api_key:
@@ -64,13 +70,13 @@ class OpenAIClient(LLMClient):
         self.model = model or os.getenv("MODEL") or "gpt-5-mini"
         self.reasoning_effort = os.getenv("REASONING_EFFORT", "low") or None
 
-        # 延迟导入，避免未安装 openai 时影响其他脚本（如数据生成/单测）
+        # Delay the import so non-LLM scripts can still run without `openai`.
         from openai import OpenAI  # type: ignore
 
         self._client = OpenAI(api_key=api_key)
 
     def _is_transient_error(self, e: Exception) -> bool:
-        """判断是否为可重试的网络/服务端瞬态错误。"""
+        """Return whether the exception looks like a retryable transient error."""
         from openai import APITimeoutError, APIConnectionError, RateLimitError, InternalServerError  # type: ignore
         if isinstance(e, (APITimeoutError, APIConnectionError, RateLimitError, InternalServerError)):
             return True
@@ -84,7 +90,7 @@ class OpenAIClient(LLMClient):
         max_tokens: int = 512,
         seed: Optional[int] = None,
     ) -> LLMCompletion:
-        # 外层重试：处理网络超时/连接错误/速率限制等瞬态异常
+        # Outer retry loop for transient timeouts, connection issues, and rate limits.
         last_transient_err: Optional[Exception] = None
         for attempt in range(_RETRY_MAX_ATTEMPTS):
             try:
@@ -96,7 +102,7 @@ class OpenAIClient(LLMClient):
                     time.sleep(delay)
                     continue
                 raise
-        # 所有重试用尽，返回 LLM_ERROR
+        # Retries exhausted: return an explicit LLM_ERROR marker.
         latency = 0.0
         msg = f"[LLM_ERROR] transient error after {_RETRY_MAX_ATTEMPTS} retries: {type(last_transient_err).__name__}: {last_transient_err}"
         return LLMCompletion(text=msg, model=self.model, latency_s=latency, usage=LLMUsage(), raw=None)
@@ -130,9 +136,9 @@ class OpenAIClient(LLMClient):
             s = _err_str(e)
             return (f"Invalid '{param}': integer below minimum value" in s) or (f"'param': '{param}'" in s and "below minimum" in s)
 
-        # 1) 优先尝试 Responses API（更通用）
+        # 1) Try the Responses API first.
         try:
-            # 部分模型对 max_output_tokens 有最小值限制（例如 >=16），这里做保底
+            # Some models enforce a minimum `max_output_tokens` (for example >=16).
             safe_max_out = max(16, int(max_tokens))
             kwargs: Dict[str, Any] = {
                 "model": self.model,
@@ -145,13 +151,13 @@ class OpenAIClient(LLMClient):
             if self.reasoning_effort is not None:
                 kwargs["reasoning"] = {"effort": self.reasoning_effort}
 
-            # 对于“参数不支持”的模型做自动重试：seed/temperature 可能会被拒绝
+            # Retry automatically when the model rejects optional parameters.
             for _ in range(4):
                 try:
                     try:
                         resp = self._client.responses.create(**kwargs)
                     except TypeError as e:
-                        # 部分 openai SDK 版本的 Responses API 可能不接受 seed 参数
+                        # Older OpenAI SDK versions may reject `seed` here.
                         if "seed" in str(e) and "unexpected keyword argument" in str(e):
                             kwargs.pop("seed", None)
                             resp = self._client.responses.create(**kwargs)
@@ -159,7 +165,7 @@ class OpenAIClient(LLMClient):
                             raise
                     break
                 except Exception as e:
-                    # 动态剔除不支持的参数并重试
+                    # Drop unsupported params dynamically and retry.
                     if (_is_unsupported_param(e, "temperature") or _is_unsupported_value(e, "temperature")) and "temperature" in kwargs:
                         kwargs.pop("temperature", None)
                         continue
@@ -175,7 +181,7 @@ class OpenAIClient(LLMClient):
                     raise
             latency = time.perf_counter() - t0
 
-            # 注意：部分情况下 output_text 字段存在但为空串；此时仍需从 output 里回收 message 文本。
+            # Some responses expose `output_text` but leave it empty; recover text from `output`.
             text = getattr(resp, "output_text", None) or ""
             if not str(text).strip():
                 out = getattr(resp, "output", None) or []
@@ -193,7 +199,7 @@ class OpenAIClient(LLMClient):
             )
             return LLMCompletion(text=text or "", model=self.model, latency_s=latency, usage=usage, raw=resp)
         except Exception as e:
-            # 2) 回退到 Chat Completions（部分账号/模型仍可用）
+            # 2) Fall back to Chat Completions.
             responses_err = e
 
         def _chat_call(use_max_completion_tokens: bool, use_seed: bool) -> Any:
@@ -212,7 +218,7 @@ class OpenAIClient(LLMClient):
                 kwargs2["reasoning_effort"] = self.reasoning_effort
             return self._client.chat.completions.create(**kwargs2)
 
-        # 先试新参数 max_completion_tokens（gpt-5 系列常需要）
+        # Try `max_completion_tokens` first; GPT-5-family models often prefer it.
         chat_errs: List[Exception] = []
         for use_mct in (True, False):
             for use_seed in ((seed is not None), False):
@@ -232,7 +238,7 @@ class OpenAIClient(LLMClient):
                     )
                     return LLMCompletion(text=text2, model=self.model, latency_s=latency2, usage=usage2, raw=resp2)
                 except Exception as e:
-                    # 若模型不支持 temperature，则去掉温度再试一次（保持 max_tokens/max_completion_tokens 不变）
+                    # If the model rejects temperature, retry without it.
                     if _is_unsupported_param(e, "temperature") or _is_unsupported_value(e, "temperature"):
                         try:
                             def _chat_call_no_temp() -> Any:
@@ -286,7 +292,7 @@ class OpenAIClient(LLMClient):
 
 class AnthropicClient(LLMClient):
     """
-    占位：后续可实现（接口保持与 LLMClient 兼容）。
+    Placeholder for a future Anthropic implementation.
     """
 
     def __init__(self, *args: Any, **kwargs: Any):
@@ -304,7 +310,7 @@ class AnthropicClient(LLMClient):
 
 class VLLMClient(LLMClient):
     """
-    占位：后续可实现（接口保持与 LLMClient 兼容）。
+    Placeholder for a future vLLM implementation.
     """
 
     def __init__(self, *args: Any, **kwargs: Any):

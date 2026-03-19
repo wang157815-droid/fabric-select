@@ -1,0 +1,9 @@
+{
+  "n_rows_in":80,
+  "gsm_stats":{
+    "min":120.0,
+    "p50":200.0,
+    "max":320.0
+  },
+  "notes":"Proxy fields derived from GSM\/tightness_factor\/composition\/construction for external sanity check."
+}

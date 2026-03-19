@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """
-离线重算多智能体实验的消融结果，不额外调用 API。
+Recompute multi-agent ablation results offline without any additional API calls.
 
-输入是 `per_question_log_main.jsonl` 中已经保存的 agent 轨迹，输出各类
-消融表和图。
+Input comes from the stored agent traces in `per_question_log_main.jsonl`;
+output includes ablation tables and figures.
 """
 import json
 import re
@@ -13,7 +13,7 @@ from typing import Any, Dict, List, Mapping, Optional, Tuple
 
 import typer
 
-app = typer.Typer(add_completion=False, help="离线消融分析")
+app = typer.Typer(add_completion=False, help="Offline ablation analysis")
 
 OptionKey = str
 ROLES = ["textile", "technical", "sourcing", "product", "compliance"]
@@ -28,7 +28,7 @@ def _get_role_weights(scenario: str) -> Dict[str, float]:
 
 
 def _aggregate_majority(decisions: Dict[str, Dict[str, Any]], roles: List[str]) -> Optional[OptionKey]:
-    """多数投票"""
+    """Majority voting."""
     counts: Dict[str, int] = defaultdict(int)
     for r in roles:
         d = decisions.get(r, {})
@@ -41,7 +41,7 @@ def _aggregate_majority(decisions: Dict[str, Dict[str, Any]], roles: List[str]) 
 
 
 def _aggregate_weighted(decisions: Dict[str, Dict[str, Any]], roles: List[str], weights: Dict[str, float]) -> Tuple[Optional[OptionKey], Dict[str, float]]:
-    """加权投票"""
+    """Weighted voting."""
     scores: Dict[str, float] = {k: 0.0 for k in ("A", "B", "C", "D")}
     for r in roles:
         d = decisions.get(r, {})
@@ -59,7 +59,7 @@ def _aggregate_weighted(decisions: Dict[str, Dict[str, Any]], roles: List[str], 
 
 
 def _aggregate_borda(decisions: Dict[str, Dict[str, Any]], roles: List[str], weights: Dict[str, float]) -> Optional[OptionKey]:
-    """Borda 计数"""
+    """Borda count."""
     points = [3.0, 2.0, 1.0, 0.0]
     scores: Dict[str, float] = {k: 0.0 for k in ("A", "B", "C", "D")}
     for r in roles:
@@ -84,7 +84,7 @@ def _aggregate_borda(decisions: Dict[str, Dict[str, Any]], roles: List[str], wei
 
 
 def _aggregate_confidence_weighted(decisions: Dict[str, Dict[str, Any]], roles: List[str]) -> Optional[OptionKey]:
-    """纯置信度加权（不用角色权重）"""
+    """Confidence-only weighting without role weights."""
     scores: Dict[str, float] = {k: 0.0 for k in ("A", "B", "C", "D")}
     for r in roles:
         d = decisions.get(r, {})
@@ -115,7 +115,7 @@ def _simulate_adaptive(
     gap_thresh: float = 0.25,
     disable_early_stop: bool = False,
 ) -> Tuple[Optional[OptionKey], int, int]:
-    """按权重顺序模拟 adaptive 协调，并可关闭早停。"""
+    """Simulate adaptive coordination in weight order, optionally disabling early stop."""
     sorted_roles = sorted(weights.items(), key=lambda kv: kv[1], reverse=True)
     r1_roles = [kv[0] for kv in sorted_roles[:3]]
     r2_roles = [kv[0] for kv in sorted_roles[3:]]
@@ -132,7 +132,7 @@ def _simulate_adaptive(
 
 
 def _load_multi_agent_records(log_jsonl: Path) -> List[Dict[str, Any]]:
-    """加载多智能体策略的日志记录（含 agent_decisions）"""
+    """Load logged multi-agent strategy records, including `agent_decisions`."""
     records = []
     multi_strategies = {"voting", "weighted_voting", "borda", "garmentagents_fixed", "garmentagents_adaptive"}
     with log_jsonl.open("r", encoding="utf-8") as f:
@@ -150,7 +150,7 @@ def _load_multi_agent_records(log_jsonl: Path) -> List[Dict[str, Any]]:
 
 
 def _load_all_records(log_jsonl: Path) -> List[Dict[str, Any]]:
-    """加载所有策略的日志记录"""
+    """Load log records for all strategies."""
     records = []
     with log_jsonl.open("r", encoding="utf-8") as f:
         for line in f:
@@ -165,7 +165,7 @@ def _load_all_records(log_jsonl: Path) -> List[Dict[str, Any]]:
 
 
 def _load_questions(questions_jsonl: Path) -> Dict[str, Dict[str, Any]]:
-    """加载题目数据"""
+    """Load question data."""
     questions = {}
     with questions_jsonl.open("r", encoding="utf-8") as f:
         for line in f:
@@ -186,7 +186,7 @@ def _simulate_static_routing(
     top1_thresh: float = 0.70,
     gap_thresh: float = 0.25,
 ) -> Tuple[Optional[OptionKey], int, int]:
-    """按固定角色顺序模拟 static routing + early stop。"""
+    """Simulate static routing with a fixed role order plus early stopping."""
     static_order = sorted(ROLES)
     r1_roles = static_order[:3]
     r2_roles = static_order[3:]
@@ -204,26 +204,26 @@ def _simulate_static_routing(
 
 @app.command()
 def main(
-    log_jsonl: Path = typer.Option(..., "--log", help="per_question_log_main.jsonl 路径"),
-    questions_jsonl: Path = typer.Option(Path("data/questions_v1_clean.jsonl"), "--questions", help="题目数据路径"),
-    out_dir: Path = typer.Option(Path("outputs/figs_ablation"), "--out-dir", help="输出目录"),
+    log_jsonl: Path = typer.Option(..., "--log", help="Path to per_question_log_main.jsonl"),
+    questions_jsonl: Path = typer.Option(Path("data/questions_v1_clean.jsonl"), "--questions", help="Path to the question data"),
+    out_dir: Path = typer.Option(Path("outputs/figs_ablation"), "--out-dir", help="Output directory"),
 ) -> None:
     out_dir.mkdir(parents=True, exist_ok=True)
     
-    # 加载所有记录
+    # Load all records.
     all_records = _load_all_records(log_jsonl)
     typer.echo(f"Loaded {len(all_records)} total records")
     
-    # 加载题目数据
+    # Load the question data.
     questions = _load_questions(questions_jsonl)
     typer.echo(f"Loaded {len(questions)} questions")
     
-    # 筛选多智能体记录
+    # Filter multi-agent records.
     multi_strategies = {"voting", "weighted_voting", "borda", "garmentagents_fixed", "garmentagents_adaptive"}
     records = [r for r in all_records if r.get("strategy") in multi_strategies and r.get("agent_decisions")]
     typer.echo(f"Filtered {len(records)} multi-agent records")
     
-    # 按 (strategy, scenario, repeat_idx) 分组
+    # Group by (strategy, scenario, repeat_idx).
     grouped: Dict[Tuple[str, str, int], List[Dict[str, Any]]] = defaultdict(list)
     for rec in records:
         key = (rec["strategy"], rec["scenario"], int(rec.get("repeat_idx", 0)))
@@ -240,7 +240,7 @@ def main(
         for rec in recs:
             decisions = rec.get("agent_decisions", {})
             gold = rec.get("gold")
-            # 关闭早停，模拟跑满全部角色。
+            # Disable early stopping and simulate running all roles.
             pick, rounds, calls = _simulate_adaptive(decisions, weights, disable_early_stop=True)
             if pick == gold:
                 correct += 1
@@ -259,7 +259,7 @@ def main(
         })
         typer.echo(f"  {scenario} r{repeat_idx}: acc={acc:.3f} avg_calls={avg_calls:.2f}")
     
-    # 同时保留默认 adaptive 结果作对照。
+    # Keep the default adaptive behavior as a reference.
     for (strategy, scenario, repeat_idx), recs in grouped.items():
         if strategy != "garmentagents_adaptive":
             continue
@@ -315,7 +315,7 @@ def main(
         })
         typer.echo(f"  static+stop {scenario} r{repeat_idx}: acc={acc_static:.3f} avg_calls={avg_calls_static:.2f}")
         
-        # 同场对比默认 adaptive。
+        # Compare against the default adaptive strategy on the same runs.
         correct_adaptive = 0
         total_calls_adaptive = 0
         for rec in recs:
@@ -368,7 +368,7 @@ def main(
     
     typer.echo("\n=== B1: Aggregator Ablation ===")
     b1_results = []
-    # 用 garmentagents_fixed 做聚合方式对比，避免缺失角色输出。
+    # Use `garmentagents_fixed` for aggregator comparisons to avoid missing-role outputs.
     for (strategy, scenario, repeat_idx), recs in grouped.items():
         if strategy != "garmentagents_fixed":
             continue
@@ -476,10 +476,10 @@ def main(
     typer.echo("\n=== D1: Clean vs Ambiguous (by margin) ===")
     d1_results = []
     
-    # 按 margin 分层：ambiguous (margin < 0.08) vs clean (margin >= 0.08)
+    # Split by margin: ambiguous (margin < 0.08) vs clean (margin >= 0.08)
     margin_threshold = 0.08
     
-    # 对所有策略做同一套分层统计。
+    # Apply the same subset split to all strategies.
     strategy_groups: Dict[Tuple[str, str, int], List[Dict[str, Any]]] = defaultdict(list)
     for rec in all_records:
         if rec.get("pred") in ("A", "B", "C", "D"):
@@ -498,7 +498,7 @@ def main(
             pred = rec.get("pred")
             
             q = questions.get(qid, {})
-            # margin 字段在 meta 里，路径是 meta.margin（不是 meta.oracle_margin）
+            # The margin field lives at `meta.margin`, not `meta.oracle_margin`.
             margin = q.get("meta", {}).get("margin", 0.1)
             
             if margin < margin_threshold:
@@ -531,7 +531,7 @@ def main(
                 "accuracy": ambig_correct / ambig_total,
             })
     
-    # 打印汇总
+    # Print summary statistics.
     for strategy in sorted(set(r["strategy"] for r in d1_results)):
         clean_accs = [r["accuracy"] for r in d1_results if r["strategy"] == strategy and r["subset"] == "clean"]
         ambig_accs = [r["accuracy"] for r in d1_results if r["strategy"] == strategy and r["subset"] == "ambiguous"]
@@ -557,7 +557,7 @@ def main(
             option_tags = q.get("option_tags", {})
             pred_tags = option_tags.get(pred, [])
             
-            # 检查是否选中了违反 must 约束的候选。
+            # Check whether the selected option violates a must constraint.
             if "must_fail" in pred_tags:
                 must_violations += 1
         
@@ -572,13 +572,13 @@ def main(
                 "violation_rate": violation_rate,
             })
     
-    # 打印汇总
+    # Print summary statistics.
     for strategy in sorted(set(r["strategy"] for r in violation_results)):
         rates = [r["violation_rate"] for r in violation_results if r["strategy"] == strategy]
         if rates:
             typer.echo(f"  {strategy}: violation_rate={sum(rates)/len(rates):.3f}")
     
-    # 保存表格结果。
+    # Save CSV outputs.
     import csv
     
     def save_csv(data: List[Dict], filename: str):
@@ -600,9 +600,9 @@ def main(
     save_csv(d1_results, "ablation_d1_clean_vs_ambiguous.csv")
     save_csv(violation_results, "ablation_constraint_violation.csv")
     
-    # 生成汇总报告。
+    # Generate the summary report.
     report_lines = ["# Ablation Study Results (Offline)\n"]
-    report_lines.append("基于 `per_question_log_main.jsonl` 中已保存的 5-role agent 输出进行离线计算。\n")
+    report_lines.append("Offline calculations based on the saved 5-role agent outputs in `per_question_log_main.jsonl`.\n")
     
     report_lines.append("## A1: No Early Stopping\n")
     report_lines.append("| Variant | Scenario | Repeat | N | Accuracy | Avg Calls |")
@@ -664,7 +664,7 @@ def main(
     report_path.write_text("\n".join(report_lines), encoding="utf-8")
     typer.echo(f"Wrote {report_path}")
     
-    # 生成图表。
+    # Generate figures.
     try:
         import matplotlib.pyplot as plt
         import numpy as np

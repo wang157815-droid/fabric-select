@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """
-错误分析脚本：从 per_question_log.jsonl 抽样错误案例，分类统计，输出 error_analysis.md
+Error-analysis script: sample failed cases from per_question_log.jsonl,
+classify them, and write error_analysis.md.
 """
 import json
 import random
@@ -10,16 +11,16 @@ from typing import Any, Dict, List
 
 import typer
 
-app = typer.Typer(add_completion=False, help="从 per_question_log 抽样错误案例并分类统计")
+app = typer.Typer(add_completion=False, help="Sample and classify error cases from per_question_log.")
 
 
 def classify_error(rec: Dict[str, Any], question: Dict[str, Any] | None) -> str:
     """
-    对一条错误记录进行分类：
-    - pred_null: 模型未能输出有效选项
-    - must_fail_chosen: 模型选择了违反硬约束的选项
-    - soft_tradeoff: 模型在软偏好权衡上失误
-    - unknown: 无法分类
+    Classify one incorrect record:
+    - pred_null: the model did not produce a valid option
+    - must_fail_chosen: the model selected an option that violates a hard constraint
+    - soft_tradeoff: the model made a soft-preference trade-off error
+    - unknown: could not be classified
     """
     pred = rec.get("pred")
     gold = rec.get("gold")
@@ -38,15 +39,15 @@ def classify_error(rec: Dict[str, Any], question: Dict[str, Any] | None) -> str:
 
 @app.command()
 def main(
-    log_jsonl: Path = typer.Option(..., "--log", help="per_question_log.jsonl 路径"),
-    questions_jsonl: Path = typer.Option(..., "--questions", help="questions_v1_clean.jsonl 路径"),
-    out_md: Path = typer.Option(..., "--out", help="输出 markdown 文件路径"),
-    sample_size: int = typer.Option(80, "--sample", help="抽样错误案例数量"),
-    seed: int = typer.Option(42, "--seed", help="随机种子"),
+    log_jsonl: Path = typer.Option(..., "--log", help="Path to per_question_log.jsonl"),
+    questions_jsonl: Path = typer.Option(..., "--questions", help="Path to questions_v1_clean.jsonl"),
+    out_md: Path = typer.Option(..., "--out", help="Output Markdown file path"),
+    sample_size: int = typer.Option(80, "--sample", help="Number of error cases to sample"),
+    seed: int = typer.Option(42, "--seed", help="Random seed"),
 ) -> None:
     random.seed(seed)
     
-    # 加载题目
+    # Load questions.
     questions_map: Dict[str, Dict[str, Any]] = {}
     if questions_jsonl.exists():
         with questions_jsonl.open("r", encoding="utf-8") as f:
@@ -63,7 +64,7 @@ def main(
                     pass
     typer.echo(f"Loaded {len(questions_map)} questions")
     
-    # 加载错误记录
+    # Load incorrect records.
     errors: List[Dict[str, Any]] = []
     total_records = 0
     with log_jsonl.open("r", encoding="utf-8") as f:
@@ -81,7 +82,7 @@ def main(
     
     typer.echo(f"Total records: {total_records}, errors: {len(errors)}")
     
-    # 分类统计
+    # Aggregate error categories.
     error_types: Counter = Counter()
     errors_by_type: Dict[str, List[Dict[str, Any]]] = defaultdict(list)
     errors_by_strategy: Dict[str, Counter] = defaultdict(Counter)
@@ -95,9 +96,9 @@ def main(
         strategy = rec.get("strategy", "unknown")
         errors_by_strategy[strategy][etype] += 1
     
-    # 抽样
+    # Sample cases.
     sampled: List[Dict[str, Any]] = []
-    # 按类型均匀抽样
+    # Sample evenly across error types first.
     types_list = list(errors_by_type.keys())
     per_type = max(1, sample_size // len(types_list)) if types_list else 0
     for etype in types_list:
@@ -105,7 +106,7 @@ def main(
         n = min(per_type, len(pool))
         sampled.extend(random.sample(pool, n))
     
-    # 补齐到 sample_size
+    # Fill the remainder up to `sample_size`.
     remaining = sample_size - len(sampled)
     if remaining > 0:
         all_errors_set = set(id(e) for e in sampled)
@@ -115,7 +116,7 @@ def main(
     
     typer.echo(f"Sampled {len(sampled)} error cases")
     
-    # 生成 markdown
+    # Build the Markdown report.
     lines: List[str] = []
     lines.append("# Error Analysis Report\n")
     lines.append(f"**Total records**: {total_records}  ")
@@ -128,10 +129,10 @@ def main(
     for etype, cnt in error_types.most_common():
         pct = 100 * cnt / len(errors) if errors else 0
         desc = {
-            "pred_null": "模型未输出有效选项 (A/B/C/D)",
-            "must_fail_chosen": "选择了违反硬约束的选项",
-            "soft_tradeoff": "软偏好权衡失误",
-            "unknown": "未知类型",
+            "pred_null": "No valid option was produced (A/B/C/D)",
+            "must_fail_chosen": "A hard-constraint-violating option was chosen",
+            "soft_tradeoff": "Soft-preference trade-off failure",
+            "unknown": "Unknown type",
         }.get(etype, etype)
         lines.append(f"| {etype} ({desc}) | {cnt} | {pct:.1f}% |")
     lines.append("")
@@ -147,7 +148,7 @@ def main(
     lines.append("")
     
     lines.append("## Sampled Error Cases\n")
-    for i, rec in enumerate(sampled[:50], 1):  # 只展示前50个
+    for i, rec in enumerate(sampled[:50], 1):  # Show only the first 50.
         qid = rec.get("question_id", "?")
         strategy = rec.get("strategy", "?")
         scenario = rec.get("scenario", "?")
@@ -169,14 +170,14 @@ def main(
             if pred and pred in option_tags:
                 lines.append(f"- **Pred option tags**: {option_tags.get(pred, [])}")
         
-        # 简短的 raw_output 预览
+        # Short raw_output preview.
         raw = rec.get("raw_output") or ""
         if raw:
             preview = raw[:150].replace("\n", " ")
             lines.append(f"- **Raw output preview**: {preview}...")
         lines.append("")
     
-    # 写入文件
+    # Write the report.
     out_md.parent.mkdir(parents=True, exist_ok=True)
     out_md.write_text("\n".join(lines), encoding="utf-8")
     typer.echo(f"Wrote error analysis -> {out_md}")

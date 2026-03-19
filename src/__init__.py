@@ -1,7 +1,8 @@
 """
-fabric-select-bench 源码包。
+fabric-select-bench source package.
 
-建议通过 `python -m src.<module>` 方式执行脚本，保证相对导入一致。
+Prefer running scripts via `python -m src.<module>` so relative imports remain
+consistent.
 """
 
 

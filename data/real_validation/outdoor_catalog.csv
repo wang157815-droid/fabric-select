@@ -1,0 +1,21 @@
+id,source_url,source_name,weight_gsm,water_repellency,breathability,abrasion,handfeel_noise,compliance.pfas_free,cost_level,lead_time_level,water_repellency_raw,breathability_raw,abrasion_raw,notes,pdf_path,scenario
+0_51_oz_Dyneema_Composite_Fabric_CT1E_08_Ultralight_High_Strength_Ripstop_by_the,,RBTR,17.3,,,,,,,,,,,,"material properties\0.51 oz Dyneema® Composite Fabric CT1E.08 _ Ultralight, High-Strength - Ripstop by the Roll.pdf",outdoor_dwr_windbreaker
+0_56_oz_MEMBRANE_7_ripstop_nylon_Ultralight_Fabric_Wholesale_Ripstop_by_the_Roll,,RBTR,,,,,,,,,,,,calendered; dwr,material properties\0.56 oz MEMBRANE 7 ripstop nylon _ Ultralight Fabric _ Wholesale - Ripstop by the Roll.pdf,outdoor_dwr_windbreaker
+0_93_oz_Membrane_Silpoly,,RBTR,27.0,,,,,,,,1500,,8000,dwr,material properties\0.93_oz_Membrane_Silpoly.pdf,outdoor_dwr_windbreaker
+1_0_oz_HyperD_calendered,,RBTR,34.0,,,,,,,,,0.045,8000,calendered; dwr,material properties\1.0_oz_HyperD_calendered.pdf,outdoor_dwr_windbreaker
+1_0_oz_HyperD_uncalendered,,RBTR,32.0,,,,,,,,1500,45.5,8000,dwr,material properties\1.0_oz_HyperD_uncalendered.pdf,outdoor_dwr_windbreaker
+1_1_oz_Ripstop_Nylon_Lightweight_Durable_Softest_Hand_Feel_Ripstop_by_the_Roll,,RBTR,37.3,,,,,,,,,,,calendered; dwr,"material properties\1.1 oz Ripstop Nylon _ Lightweight, Durable, Softest Hand Feel - Ripstop by the Roll.pdf",outdoor_dwr_windbreaker
+1_1_oz_Silpoly_Waterproof_Non_Breathable_UV_resistant_Low_Stretch_Ripstop_by_the,,RBTR,37.3,,,,,,,,2000,,,pu,"material properties\1.1 oz Silpoly _ Waterproof_Non-Breathable, UV resistant, Low-Stretch - Ripstop by the Roll.pdf",outdoor_dwr_windbreaker
+1_1_oz_Ripstop_Nylon_Cal,,RBTR,34.0,,,,,,,,,0.302,10000,calendered; dwr,material properties\1.1_oz_Ripstop_Nylon_Cal.pdf,outdoor_dwr_windbreaker
+1_1_oz_Silpoly_PU4000,,RBTR,37.0,,,,,,,,4000,,8000,dwr,material properties\1.1_oz_Silpoly_PU4000.pdf,outdoor_dwr_windbreaker
+1_6_oz_HyperD_Lightweight_Diamond_Grid_Nylon_Hammocks_Bags_Ripstop_by_the_Roll,,RBTR,54.3,,,,,,,,,,,dwr,"material properties\1.6 oz HyperD™ _ Lightweight Diamond Grid Nylon _ Hammocks, Bags - Ripstop by the Roll.pdf",outdoor_dwr_windbreaker
+1_6_oz_HyperD_PU4000_Extremely_Waterproof_Lightweight_Ripstop_by_the_Roll,,RBTR,53.8,,,,,,,,4000,,,pu,"material properties\1.6 oz HyperD™ PU4000 _ Extremely Waterproof, Lightweight - Ripstop by the Roll.pdf",outdoor_dwr_windbreaker
+1_6_oz_Silpoly_Ripstop_Waterproof_Fabric_UV_Resistant_Ripstop_by_the_Roll,,RBTR,45.3,,,,,,,,2000,,,pu,"material properties\1.6 oz Silpoly _ Ripstop Waterproof Fabric, UV Resistant - Ripstop by the Roll.pdf",outdoor_dwr_windbreaker
+1_9_oz_PU_coated_Ripstop_Nylon_Waterproof_UV_FR_Coated_Ripstop_by_the_Roll,,RBTR,,,,,,,,,,,,dwr; pu,"material properties\1.9 oz PU coated Ripstop Nylon _ Waterproof, UV+FR Coated - Ripstop by the Roll.pdf",outdoor_dwr_windbreaker
+1_9_oz_Ripstop_Nylon_Hammocks_Bags_Lining_Ripstop_by_the_Roll,,RBTR,64.4,,,,,,,,,,,dwr,"material properties\1.9 oz Ripstop Nylon - Hammocks, Bags, Lining - Ripstop by the Roll.pdf",outdoor_dwr_windbreaker
+1_9_oz_PU_Coated_Ripstop_Nylon_ee2efa98_6df6_4d87_b671_a303ef17ebf3,,RBTR,60.0,,,,,,,,8000,,10000,dwr; pu,material properties\1.9_oz_PU_Coated_Ripstop_Nylon_ee2efa98-6df6-4d87-b671-a303ef17ebf3.pdf,outdoor_dwr_windbreaker
+2_2_oz_HEX70_XL_Lightweight_Hex_Grid_Nylon_70_Denier_Ripstop_by_the_Roll,,RBTR,74.6,,,,,,,,3000,,,dwr,material properties\2.2 oz HEX70 XL _ Lightweight Hex Grid Nylon _ 70 Denier - Ripstop by the Roll.pdf,outdoor_dwr_windbreaker
+HyperD_300,,RBTR,111.0,,,,,,,,19000,,8000,dwr,material properties\HyperD_300.pdf,outdoor_dwr_windbreaker
+IDFL_15_195175_Test_Report_Ripstop_LLC_1_0_HyperD,,RBTR,,,,,,,,,,,,,material properties\IDFL_15-195175_Test_Report_Ripstop_LLC-1.0-HyperD.pdf,outdoor_dwr_windbreaker
+IDFL_TEST_REPORT_MEMBRANE_10_RIPSTOP_NYLON,,RBTR,,,,,,,,,,,,,material properties\IDFL_TEST_REPORT_-_MEMBRANE_10_RIPSTOP_NYLON.pdf,outdoor_dwr_windbreaker
+MEMBRANE_Silpoly_Fabric_Light_Waterproof_Ripstop_by_the_Roll,,RBTR,,,,,,,,,,,,pu,material properties\MEMBRANE Silpoly Fabric - Light & Waterproof - Ripstop by the Roll.pdf,outdoor_dwr_windbreaker
