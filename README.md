@@ -116,7 +116,7 @@ Package dependencies are listed in `requirements.txt`:
 ## Installation
 
 ```powershell
-cd D:\fabric-select-bench
+# Run from the repository root
 python -m venv .venv
 .\.venv\Scripts\activate
 pip install -r requirements.txt
@@ -138,6 +138,9 @@ Notes:
 
 ## Usage Instructions
 
+Unless noted otherwise, the commands below assume your current working directory
+is the repository root.
+
 ### 1. Reproduce the simulated dataset
 
 The main benchmark used in the paper can be regenerated either directly with `src/dataset_v1.py` or via the wrapper script `scripts/reproduce_dataset.ps1`.
@@ -145,14 +148,12 @@ The main benchmark used in the paper can be regenerated either directly with `sr
 Recommended one-command reproduction:
 
 ```powershell
-cd D:\fabric-select-bench
 .\scripts\reproduce_dataset.ps1
 ```
 
 Equivalent direct command:
 
 ```powershell
-cd D:\fabric-select-bench
 .\.venv\Scripts\python -m src.dataset_v1 --seed 42 --n-outdoor 650 --n-winter 650 --clean-per-scenario 500
 ```
 
@@ -168,7 +169,6 @@ Expected outputs include:
 Example: run `few_shot` on the cleaned outdoor questions.
 
 ```powershell
-cd D:\fabric-select-bench
 .\.venv\Scripts\python -m src.eval_run `
   --strategy few_shot `
   --scenario outdoor_dwr_windbreaker `
@@ -186,7 +186,6 @@ cd D:\fabric-select-bench
 The manuscript-level main run is scripted in `scripts/run_main_matrix.ps1`:
 
 ```powershell
-cd D:\fabric-select-bench
 .\scripts\run_main_matrix.ps1
 ```
 
@@ -203,10 +202,9 @@ By default this script runs:
 ### 4. Regenerate figures and paper summaries
 
 ```powershell
-cd D:\fabric-select-bench
 .\scripts\run_main_figs.ps1
-.\.venv\Scripts\python scripts\compile_paper_tables.py --out-md ../mypaper/PAPER_TABLES.md
-.\.venv\Scripts\python scripts\compile_paper_figures.py --out-md ../mypaper/PAPER_FIGURES.md
+.\.venv\Scripts\python scripts\compile_paper_tables.py --out-md PAPER_TABLES.md
+.\.venv\Scripts\python scripts\compile_paper_figures.py --out-md PAPER_FIGURES.md
 ```
 
 Common outputs:
@@ -246,7 +244,6 @@ For a detailed description of the real-catalog sanity-check workflow, see `data/
 Example command:
 
 ```powershell
-cd D:\fabric-select-bench
 .\.venv\Scripts\python -m src.external_validation build `
   --scenario outdoor_dwr_windbreaker `
   --catalog-csv data/real_validation/outdoor_catalog.csv `
@@ -264,7 +261,6 @@ cd D:\fabric-select-bench
 Run the bundled unit tests with:
 
 ```powershell
-cd D:\fabric-select-bench
 .\.venv\Scripts\python -m unittest discover -s tests -v
 ```
 
