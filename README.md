@@ -1,12 +1,12 @@
 # FabricSelectBench
 
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.18948729.svg)](https://doi.org/10.5281/zenodo.18948729)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.19106553.svg)](https://doi.org/10.5281/zenodo.19106553)
 
 FabricSelectBench is a benchmark for constraint-aware fabric selection in apparel engineering. This repository accompanies the manuscript *Benchmarking Large Language Model Decision Strategies for Constraint-Aware Fabric Selection in Apparel Engineering* and contains the dataset construction code, strategy implementations, evaluation scripts, result summaries, and external-validation utilities used in the paper.
 
 ## Archive And Project Links
 
-- Archival DOI: [10.5281/zenodo.18948729](https://doi.org/10.5281/zenodo.18948729)
+- Archival DOI: [10.5281/zenodo.19106553](https://doi.org/10.5281/zenodo.19106553)
 - Development repository: [github.com/wang157815-droid/fabric-select](https://github.com/wang157815-droid/fabric-select)
 
 ## Project Overview
@@ -272,7 +272,7 @@ cd D:\fabric-select-bench
 
 If you use this archive, please cite both the dataset/code archive and the manuscript:
 
-- Sai Wang and Tao Wu. *FabricSelectBench* archive. Zenodo. DOI: [10.5281/zenodo.18948729](https://doi.org/10.5281/zenodo.18948729)
+- Sai Wang and Tao Wu. *FabricSelectBench* archive. Zenodo. DOI: [10.5281/zenodo.19106553](https://doi.org/10.5281/zenodo.19106553)
 - Sai Wang and Tao Wu. *Benchmarking Large Language Model Decision Strategies for Constraint-Aware Fabric Selection in Apparel Engineering*. Manuscript under review.
 
 ## License And Contribution Guidelines
